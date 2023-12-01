@@ -11,7 +11,7 @@ int32_t main() {
   std::string line(1000, '\0');
   int32_t sum1 = 0;
   int32_t sum2 = 0;
-  std::string number_names[10] = {
+  std::string number_names[9] = {
     "one",
     "two",
     "three",
