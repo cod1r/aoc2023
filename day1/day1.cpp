@@ -5,7 +5,7 @@
 int32_t main() {
   std::ifstream input("day1_input.txt");
   if (!input.is_open()) {
-    std::cerr << "Coult not open input\n";
+    std::cerr << "Could not open input\n";
     return 1;
   }
   std::string line(1000, '\0');
