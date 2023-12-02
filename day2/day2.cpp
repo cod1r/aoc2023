@@ -1,7 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <string>
-#include <vector>
 #include <array>
 #include <cmath>
 int32_t max(int32_t a, int32_t b) {
@@ -59,7 +57,6 @@ int32_t main() {
         break;
       }
     }
-    std::vector<std::string> sets;
     int32_t idx_of_start_of_sets = idx_of_colon;
     int32_t prev_idx_of_semi = idx_of_start_of_sets;
     bool add = true;
