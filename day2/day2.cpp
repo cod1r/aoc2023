@@ -39,21 +39,14 @@ int32_t main() {
   int32_t sum_of_game_ids = 0;
   int32_t sum_of_rgb_multiplied = 0;
   char line[500];
+  int32_t game_id = 0;
   while (input.getline(line, 500)) {
+    ++game_id;
     int32_t line_length = input.gcount();
     int32_t idx_of_colon = 0;
-    int32_t game_id = 0;
     for (int32_t idx = 0; idx < line_length; ++idx) {
       if (line[idx] == ':') {
         idx_of_colon = idx;
-        break;
-      }
-    }
-    for (int32_t idx = 0; idx < line_length; ++idx) {
-      if (line[idx] == ' ') {
-        for (int32_t digit_idx = idx + 1; digit_idx < idx_of_colon; ++digit_idx) {
-          game_id += (line[digit_idx] - '0') * std::pow(10, (idx_of_colon - digit_idx - 1));
-        }
         break;
       }
     }
