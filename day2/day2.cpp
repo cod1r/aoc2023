@@ -74,7 +74,7 @@ int32_t main() {
     // adding 2 because of semi and space
     sets.push_back(std::string(line + prev_idx_of_semi + 2, line_length - (prev_idx_of_semi + 2)));
     sum_of_game_ids += game_id;
-    for (std::string set : sets) {
+    for (std::string& set : sets) {
       std::array<int32_t, 3> rgb = parse_set(set);
       if (rgb[0] > 12 || rgb[1] > 13 || rgb[2] > 14) {
         sum_of_game_ids -= game_id;
