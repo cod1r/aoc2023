@@ -26,6 +26,7 @@ int32_t main(int32_t argc, char *argv[]) {
   std::vector<std::tuple<int32_t, int32_t, char>> symbols;
   int32_t line_number = 0;
   while (input.getline(line, 256)) {
+    // minus 1 because null termination character
     int32_t line_length = input.gcount() - 1;
     std::optional<int32_t> digit_start;
     for (int32_t line_idx = 0; line_idx < line_length; ++line_idx) {
