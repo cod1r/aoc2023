@@ -6,6 +6,7 @@
 #include <cmath>
 #include <numeric>
 #include <execution>
+#include <algorithm>
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
     std::cerr << "./day.out input.txt is the format required\n";
@@ -67,7 +68,7 @@ int32_t main(int32_t argc, char *argv[]) {
   std::vector<int32_t> count_of_each_card(num_lines, 1);
   for (int32_t idx_of_card = 0; idx_of_card < num_lines; ++idx_of_card) {
     for (int32_t idx_of_increment = idx_of_card + 1;
-        idx_of_increment < idx_of_card + card_num_winnings[idx_of_card] + 1;
+        idx_of_increment < std::min(idx_of_card + card_num_winnings[idx_of_card] + 1, num_lines);
         ++idx_of_increment) {
       count_of_each_card[idx_of_increment] += 1 * count_of_each_card[idx_of_card];
     }
