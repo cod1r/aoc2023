@@ -5,6 +5,7 @@
 #include <optional>
 #include <cmath>
 #include <numeric>
+#include <execution>
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
     std::cerr << "./day.out input.txt is the format required\n";
@@ -72,5 +73,5 @@ int32_t main(int32_t argc, char *argv[]) {
     }
   }
   std::cout << "PART1: " << part1_sum << std::endl;
-  std::cout << "PART2: " << std::reduce(count_of_each_card.begin(), count_of_each_card.end()) << std::endl;
+  std::cout << "PART2: " << std::reduce(std::execution::par, count_of_each_card.begin(), count_of_each_card.end()) << std::endl;
 }
