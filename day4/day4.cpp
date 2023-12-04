@@ -61,7 +61,7 @@ int32_t main(int32_t argc, char *argv[]) {
       }
     }
     card_num_winnings.push_back(matches);
-    part1_sum += std::pow(2, matches - 1);
+    part1_sum += 1 << (matches - 1);
     winning_idx = 0;
   }
   std::vector<int32_t> count_of_each_card(num_lines, 1);
