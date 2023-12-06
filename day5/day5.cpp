@@ -25,7 +25,7 @@ std::vector<int64_t> parse_string_to_vec_numbers(char *line, int32_t length) {
     if (line[num_parser_idx] >= '0' && line[num_parser_idx] <= '9' && !digit_start.has_value()) {
       digit_start = num_parser_idx;
     }
-    if (line[num_parser_idx] == ' ' || num_parser_idx == length - 1) {
+    if ((line[num_parser_idx] == ' ' && digit_start.has_value()) || num_parser_idx == length - 1) {
       if (num_parser_idx == length - 1)
         num_parser_idx = length;
       num_strings.push_back(std::string_view(line + *digit_start, num_parser_idx - *digit_start));
@@ -36,6 +36,50 @@ std::vector<int64_t> parse_string_to_vec_numbers(char *line, int32_t length) {
     numbers.push_back(parse_number(seed_str));
   }
   return numbers;
+}
+std::vector<std::pair<int64_t, int64_t>> change_range_and_add_new_range(
+    const std::vector<std::tuple<int64_t, int64_t, int64_t>> &map,
+    std::vector<std::pair<int64_t, int64_t>> &ranges
+    ) {
+  std::vector<std::pair<int64_t, int64_t>> add_to_ranges;
+  for (const auto &t : map) {
+    int64_t dest = std::get<0>(t);
+    int64_t src = std::get<1>(t);
+    int64_t map_range = std::get<2>(t);
+    for (int32_t idx_ranges = 0; idx_ranges < (int32_t)ranges.size();) {
+      auto p = ranges[idx_ranges];
+      int64_t range_start = p.first;
+      int64_t len_of_range = p.second;
+      // check if there's any overlap
+      if (src < range_start + len_of_range && range_start < src + map_range) {
+        int64_t overlap_start = std::max(src, range_start);
+        int64_t overlap_range = std::min(src + map_range, range_start + len_of_range) - overlap_start;
+        // mapping the start value from src to dest
+        int64_t overlap_start_mapped = overlap_start + (dest - src);
+        add_to_ranges.push_back({overlap_start_mapped, overlap_range});
+        ranges.erase(ranges.begin() + idx_ranges);
+        // if there's any unmapped values from the left
+        if (overlap_start > range_start) {
+          ranges.push_back({range_start, overlap_start - range_start});
+        }
+        // if there's any unmapped values from the right
+        if (range_start + len_of_range > overlap_start + overlap_range) {
+          ranges.push_back({overlap_start + overlap_range,
+          (range_start + len_of_range) - (overlap_start + overlap_range)});
+        }
+        continue;
+      }
+      idx_ranges += 1;
+    }
+  }
+  add_to_ranges.insert(add_to_ranges.end(), ranges.begin(), ranges.end());
+  return add_to_ranges;
+}
+std::ostream& operator<<(std::ostream &os, std::vector<std::pair<int64_t, int64_t>> p) {
+  for (auto pp : p) {
+    os << pp.first << " " << pp.second << std::endl;
+  }
+  return os;
 }
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
@@ -200,201 +244,21 @@ int32_t main(int32_t argc, char *argv[]) {
   }
   std::cout << "PART1: " << min_location_1 << std::endl;
 
-  // the optimization here would be to use every range in seed to soil and map that
-  // to a range for location
-  //
-  // map the mappings
   int64_t part2_min_location = ((uint64_t)1 << 63) - 1;
-  auto seed_to_soil_ranked = seed_to_soil;
-  std::sort(seed_to_soil_ranked.begin(), seed_to_soil_ranked.end(), [&](auto t1, auto t2) {
-    int64_t seed_num = std::get<1>(t1);
-    for (std::tuple<int64_t, int64_t, int64_t> &t : soil_to_fert) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : fert_to_water) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : water_to_light) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : light_to_temp) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : temp_to_humid) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : humid_to_location) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num >= src && seed_num <= src + range - 1) {
-        seed_num += dest - src;
-        break;
-      }
-    }
-
-    int64_t seed_num2 = std::get<1>(t2);
-    for (std::tuple<int64_t, int64_t, int64_t> &t : soil_to_fert) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : fert_to_water) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : water_to_light) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : light_to_temp) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : temp_to_humid) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    for (std::tuple<int64_t, int64_t, int64_t> &t : humid_to_location) {
-      int64_t src = std::get<1>(t);
-      int64_t dest = std::get<0>(t);
-      int64_t range = std::get<2>(t);
-      if (seed_num2 >= src && seed_num2 <= src + range - 1) {
-        seed_num2 += dest - src;
-        break;
-      }
-    }
-    return seed_num < seed_num2;
-  });
-  auto best_tuple = seed_to_soil_ranked[0];
-  int64_t starting_seed_num = std::get<1>(best_tuple);
-  int64_t range = std::get<2>(best_tuple);
   for (int32_t idx_seed = 0; idx_seed < (int32_t)seeds.size(); idx_seed += 2) {
-    int64_t seed_num = seeds[idx_seed];
+    int64_t seed_start = seeds[idx_seed];
     int64_t seed_range = seeds[idx_seed + 1];
-    if (starting_seed_num <= seed_num + seed_range - 1 && seed_num <= starting_seed_num + range - 1) {
-      int64_t limit = seed_num + seed_range;
-      for (; seed_num < limit; ++seed_num) {
-        int64_t changing_seed_num = seed_num;
-        for (std::tuple<int64_t, int64_t, int64_t> &t : seed_to_soil) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : soil_to_fert) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : fert_to_water) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : water_to_light) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : light_to_temp) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : temp_to_humid) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        for (std::tuple<int64_t, int64_t, int64_t> &t : humid_to_location) {
-          int64_t src = std::get<1>(t);
-          int64_t dest = std::get<0>(t);
-          int64_t range = std::get<2>(t);
-          if (changing_seed_num >= src && changing_seed_num <= src + range - 1) {
-            changing_seed_num += dest - src;
-            break;
-          }
-        }
-        part2_min_location = std::min<int64_t>(part2_min_location, changing_seed_num);
-      }
+    std::vector<std::pair<int64_t, int64_t>> ranges;
+    ranges.push_back({seed_start, seed_range});
+    ranges = change_range_and_add_new_range(seed_to_soil, ranges);
+    ranges = change_range_and_add_new_range(soil_to_fert, ranges);
+    ranges = change_range_and_add_new_range(fert_to_water, ranges);
+    ranges = change_range_and_add_new_range(water_to_light, ranges);
+    ranges = change_range_and_add_new_range(light_to_temp, ranges);
+    ranges = change_range_and_add_new_range(temp_to_humid, ranges);
+    ranges = change_range_and_add_new_range(humid_to_location, ranges);
+    for (const auto &r : ranges) {
+      part2_min_location = std::min<int64_t>(r.first, part2_min_location);
     }
   }
   std::cout << "PART2: " << part2_min_location << std::endl;
