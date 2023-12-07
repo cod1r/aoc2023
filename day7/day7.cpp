@@ -246,6 +246,6 @@ int32_t main(int32_t argc, char *argv[]) {
   for (size_t idx = 0; idx < card_and_bid_part2.size(); ++idx) {
     part2_ans += (idx + 1) * card_and_bid_part2[idx].second;
   }
-  std::cout << "PART1: " << part2_ans << "\n";
+  std::cout << "PART2: " << part2_ans << "\n";
   return 0;
 }
