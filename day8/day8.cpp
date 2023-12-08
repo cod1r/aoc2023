@@ -89,7 +89,7 @@ int32_t main(int32_t argc, char *argv[]) {
       default: break;
     }
   }
-  std::map<std::string, std::vector<int32_t>> history;
+  std::map<std::string, int64_t> history;
   for (size_t idx = 0; idx < a_nodes.size(); ++idx) {
     std::set<std::string> cycle_detect;
     auto curr_str = std::string(a_nodes[idx]);
@@ -98,8 +98,8 @@ int32_t main(int32_t argc, char *argv[]) {
       curr_str +
       std::string{directions[idx_direction]} +
       std::to_string(idx_direction);
-    int32_t counter = 0;
-    std::vector<int32_t> curr_hist;
+    int64_t counter = 0;
+    int64_t high_z = 0;
     while (!cycle_detect.contains(key_check)) {
       const std::string key =
         curr_str +
@@ -108,19 +108,18 @@ int32_t main(int32_t argc, char *argv[]) {
       cycle_detect.insert(key);
       curr_str = directions[idx_direction] == 'L' ? nodes[curr_str].first : nodes[curr_str].second;
       if (curr_str[2] == 'Z') {
-        curr_hist.push_back(counter + 1);
+        high_z = counter + 1;
       }
       idx_direction += 1;
       idx_direction %= directions.size();
       counter += 1;
       key_check = curr_str + std::string{directions[idx_direction]} + std::to_string(idx_direction);
     }
-    history.insert({std::string(a_nodes[idx]), curr_hist});
+    history.insert({std::string(a_nodes[idx]), high_z});
   }
   int64_t curr_lcm = 1;
   for (auto p : history) {
-    int32_t sum = std::reduce(p.second.begin(), p.second.end());
-    curr_lcm = std::lcm(curr_lcm, sum);
+    curr_lcm = std::lcm(curr_lcm, p.second);
   }
   std::cout << "PART2: " << curr_lcm << std::endl;
   return 0;
