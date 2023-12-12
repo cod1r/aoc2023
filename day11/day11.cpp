@@ -90,24 +90,15 @@ const std::vector<int32_t>& cols
 ) {
   std::vector<int64_t> row_seq = generate_seq(times, (int32_t)image.size(), rows);
   std::vector<int64_t> col_seq = generate_seq(times, (int32_t)image[0].length(), cols);
-  int64_t sum = 0;
-  for (const auto& p : pairs) {
+  int64_t sum = std::accumulate(pairs.begin(), pairs.end(), (int64_t)0, [&row_seq, &col_seq](int64_t acc, const auto& p) {
     int64_t converted_row_p0 = (int64_t)row_seq[p[0].first];
     int64_t converted_row_p1 = (int64_t)row_seq[p[1].first];
     int64_t converted_col_p0 = (int64_t)col_seq[p[0].second];
     int64_t converted_col_p1 = (int64_t)col_seq[p[1].second];
-    sum += std::abs(converted_row_p0 - converted_row_p1) +
+    return acc + std::abs(converted_row_p0 - converted_row_p1) +
       std::abs(converted_col_p0 - converted_col_p1);
-  }
+  });
   return sum;
-  //return std::accumulate(pairs.begin(), pairs.end(), 0, [&row_seq, &col_seq](int64_t acc, const auto& p) {
-  //  int64_t converted_row_p0 = (int64_t)row_seq[p[0].first];
-  //  int64_t converted_row_p1 = (int64_t)row_seq[p[1].first];
-  //  int64_t converted_col_p0 = (int64_t)col_seq[p[0].second];
-  //  int64_t converted_col_p1 = (int64_t)col_seq[p[1].second];
-  //  return std::move(acc) + std::abs(converted_row_p0 - converted_row_p1) +
-  //    std::abs(converted_col_p0 - converted_col_p1);
-  //});
 }
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
