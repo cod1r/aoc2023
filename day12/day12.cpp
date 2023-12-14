@@ -108,6 +108,9 @@ std::vector<std::string> generate_arrangements_based_off_of_group_size(
     groups.push_back(std::string(size, '#'));
   }
   std::vector<std::vector<std::string>> variants_of_groups(group_size.size());
+  if (length_of_springs < (groups.size() - 1 + summed_up_sizes)) {
+    return arrangements;
+  }
   size_t left_over = length_of_springs - (groups.size() - 1 + summed_up_sizes);
   for (size_t idx_groups = 0; idx_groups < groups.size(); ++idx_groups) {
     std::string cpy_group = groups[idx_groups];
@@ -131,6 +134,12 @@ std::vector<std::string> generate_arrangements_based_off_of_group_size(
       }
     }
   }
+  //auto _ = filter_str;
+  //for (const auto& v : variants_of_groups) {
+  //  for (const auto& s : v) {
+  //    std::cout << s << std::endl;
+  //  }
+  //}
   dfs_concat_groups(variants_of_groups, length_of_springs, filter_str, std::string{}, 0, arrangements);
   return arrangements;
 }
@@ -201,23 +210,17 @@ int32_t main(int32_t argc, char *argv[]) {
   for (size_t idx_condition_record = 0; idx_condition_record < part2_condition_records.size();
       ++idx_condition_record) {
     std::string condition_record = part2_condition_records[idx_condition_record];
-    std::vector<std::string> split_up_parts;
-    std::string temp;
-    for (const char& c : condition_record) {
-      if (c == '.') {
-        if (!temp.empty()) {
-          split_up_parts.push_back(temp);
-          temp.clear();
-        }
-        continue;
-      }
-      temp.push_back(c);
+    for (size_t idx_record = 0; idx_record < condition_record.length(); ++idx_record) {
     }
   }
-  if (!temp.empty()) {
-    split_up_parts.push_back(temp);
-    temp.clear();
-  }
   std::cout << "PART2: " << part2 << std::endl;
+    const std::string& test_str = "..#####.";
+    std::vector<std::string> a =
+      generate_arrangements_based_off_of_group_size({5},
+      test_str,
+      test_str.length());
+    for (const auto& s : std::set<std::string>(a.begin(), a.end())) {
+      std::cout << s << std::endl;
+    }
   return 0;
 }
