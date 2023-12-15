@@ -14,6 +14,7 @@
 #include <numeric>
 #include <cassert>
 #include <ranges>
+#include <format>
 
 int64_t parse_number(std::string_view s) {
   int32_t length = (int32_t)s.length();
@@ -69,6 +70,10 @@ struct Coord {
   size_t x;
   size_t y;
 };
+struct Range {
+  size_t start;
+  size_t length;
+};
 void roll_north(std::vector<std::string>& platform) {
   for (size_t col = 0; col < platform[0].length(); ++col) {
     Coord north_most; north_most.x = col; north_most.y = 0;
@@ -77,7 +82,7 @@ void roll_north(std::vector<std::string>& platform) {
       if (platform[row][col] == '#') {
         north_most.y = row + 1;
       } else if (platform[row][col] == 'O') {
-          rocks.push_back(Coord{ .x = north_most.x, .y = north_most.y });
+          rocks.push_back(north_most);
           platform[row][col] = '.';
           north_most.y += 1;
       }
@@ -95,7 +100,7 @@ void roll_west(std::vector<std::string>& platform) {
       if (platform[row][col] == '#') {
         west_most.x = col + 1;
       } else if (platform[row][col] == 'O') {
-          rocks.push_back(Coord{ .x = west_most.x, .y = west_most.y });
+          rocks.push_back(west_most);
           platform[row][col] = '.';
           west_most.x += 1;
       }
@@ -114,7 +119,7 @@ void roll_south(std::vector<std::string>& platform) {
       if (platform[row][col] == '#') {
         south_most.y = row - 1;
       } else if (platform[row][col] == 'O') {
-          rocks.push_back(Coord{ .x = south_most.x, .y = south_most.y });
+          rocks.push_back(south_most);
           platform[row][col] = '.';
           south_most.y -= 1;
       }
@@ -137,7 +142,7 @@ void roll_east(std::vector<std::string>& platform) {
       if (platform[row][col] == '#') {
         east_most.x = col - 1;
       } else if (platform[row][col] == 'O') {
-          rocks.push_back(Coord{ .x = east_most.x, .y = east_most.y });
+          rocks.push_back(east_most);
           platform[row][col] = '.';
           east_most.x -= 1;
       }
@@ -169,6 +174,8 @@ int32_t main(int32_t argc, char *argv[]) {
     size_t line_length = input.gcount() - 1;
     platform.push_back(std::string(line, line_length));
   }
+  auto part2_platform = platform;
+
   roll_north(platform);
   size_t part1 = 0;
   for (size_t row = 0; row < platform.size(); ++row) {
@@ -182,22 +189,25 @@ int32_t main(int32_t argc, char *argv[]) {
     part1 += (platform.size() - row) * rock_amt;
   }
   std::cout << "PART1: " << part1 << std::endl;
+
   size_t part2 = 0;
-  for (size_t roll_counter = 0; roll_counter < 1'000'000'000; roll_counter += 1) {
-    roll_north(platform);
-    roll_west(platform);
-    roll_south(platform);
-    roll_east(platform);
-  }
-  for (size_t row = 0; row < platform.size(); ++row) {
-    const std::string& s = platform[row];
-    int64_t rock_amt = std::accumulate(s.begin(), s.end(), int64_t{0},
-        [](int64_t acc, const char& c) {
+  for (size_t c = 0; c < 1'000; ++c) {
+    roll_north(part2_platform);
+    roll_west(part2_platform);
+    roll_south(part2_platform);
+    roll_east(part2_platform);
+    size_t current_load = 0;
+    for (size_t row = 0; row < platform.size(); ++row) {
+      const std::string& s = part2_platform[row];
+      int64_t rock_amt = std::accumulate(s.begin(), s.end(), int64_t{0},
+          [](int64_t acc, const char& c) {
           if (c == 'O')
-            return acc + 1;
+          return acc + 1;
           return acc;
-        });
-    part2 += (platform.size() - row) * rock_amt;
+          });
+      current_load += (part2_platform.size() - row) * rock_amt;
+    }
+    part2 = current_load;
   }
   std::cout << "PART2: " << part2 << std::endl;
   return 0;
