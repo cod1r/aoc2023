@@ -441,7 +441,8 @@ int32_t main(int32_t argc, char *argv[]) {
           const auto &second_pair = horizontal[idx2];
           if (top_pair.first.x <=
                   second_pair.first.x + second_pair.second.first &&
-              second_pair.first.x <= top_pair.first.x + top_pair.second.first) {
+              second_pair.first.x <= top_pair.first.x + top_pair.second.first &&
+              get_inside(second_pair.second.second) == InsideSide::U) {
             int64_t start_overlap =
                 std::max(top_pair.first.x, second_pair.first.x);
             int64_t end_overlap =
@@ -486,7 +487,8 @@ int32_t main(int32_t argc, char *argv[]) {
           const auto &second_pair = horizontal[idx2];
           if (top_pair.first.x <=
                   second_pair.first.x + second_pair.second.first &&
-              second_pair.first.x <= top_pair.first.x + top_pair.second.first) {
+              second_pair.first.x <= top_pair.first.x + top_pair.second.first &&
+              get_inside(second_pair.second.second) == InsideSide::D) {
             int64_t start_overlap =
                 std::max(top_pair.first.x, second_pair.first.x);
             int64_t end_overlap =
@@ -518,9 +520,8 @@ int32_t main(int32_t argc, char *argv[]) {
       vertical.begin(), vertical.end(),
       [](const auto &p, const auto &p2) { return p.first.x < p2.first.x; });
   {
-    std::set<int64_t> already_matched_v;
     for (size_t idx = 0; idx < vertical.size(); ++idx) {
-      if (already_matched_v.contains(idx)) {
+      if (get_inside(vertical[idx].second.second) == InsideSide::L) {
         continue;
       }
       std::stack<std::pair<Coord, std::pair<int64_t, InsideSide>>> stack;
@@ -555,7 +556,6 @@ int32_t main(int32_t argc, char *argv[]) {
                                (end_overlap + 1),
                            top_pair.second.second}});
             }
-            already_matched_v.insert(idx2);
             break;
           }
         }
@@ -568,7 +568,7 @@ int32_t main(int32_t argc, char *argv[]) {
   {
     std::set<int64_t> already_matched_v;
     for (size_t idx = 0; idx < vertical.size(); ++idx) {
-      if (already_matched_v.contains(idx)) {
+      if (get_inside(vertical[idx].second.second) == InsideSide::R) {
         continue;
       }
       std::stack<std::pair<Coord, std::pair<int64_t, InsideSide>>> stack;
@@ -603,7 +603,6 @@ int32_t main(int32_t argc, char *argv[]) {
                                (end_overlap + 1),
                            top_pair.second.second}});
             }
-            already_matched_v.insert(idx2);
             break;
           }
         }
@@ -636,13 +635,13 @@ int32_t main(int32_t argc, char *argv[]) {
       ++idx2;
     }
   }
-  //std::cout << std::endl;
-  //for (const Region &r : regions) {
-  //  std::cout << r.top_left << " " << r.top_right << std::endl;
-  //  std::cout << r.bottom_left << " " << r.bottom_right << std::endl;
-  //  std::cout << r.get_area() << std::endl;
-  //}
-  //std::cout << std::endl;
+  // std::cout << std::endl;
+  // for (const Region &r : regions) {
+  //   std::cout << r.top_left << " " << r.top_right << std::endl;
+  //   std::cout << r.bottom_left << " " << r.bottom_right << std::endl;
+  //   std::cout << r.get_area() << std::endl;
+  // }
+  // std::cout << std::endl;
   for (size_t idx = 0; idx < regions.size();) {
     bool removed = false;
     for (size_t idx2 = idx + 1; idx2 < regions.size();) {
@@ -665,59 +664,59 @@ int32_t main(int32_t argc, char *argv[]) {
                            Coord(end_overlap_x, start_overlap_y),
                            Coord(start_overlap_x, end_overlap_y),
                            Coord(end_overlap_x, end_overlap_y));
-          regions.push_back(overlap_reg);
+        regions.push_back(overlap_reg);
         if (r2.top_left.x < start_overlap_x) {
           Region left_over(Coord(r2.top_left.x, r2.top_left.y),
                            Coord(start_overlap_x - 1, r2.top_left.y),
                            Coord(r2.bottom_left.x, r2.bottom_left.y),
                            Coord(start_overlap_x - 1, r2.bottom_left.y));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r.top_left.x < start_overlap_x) {
           Region left_over(Coord(r.top_left.x, r.top_left.y),
                            Coord(start_overlap_x - 1, r.top_left.y),
                            Coord(r.bottom_left.x, r.bottom_left.y),
                            Coord(start_overlap_x - 1, r.bottom_left.y));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r2.top_right.x > end_overlap_x) {
           Region left_over(Coord(end_overlap_x + 1, r2.top_left.y),
                            Coord(r2.top_right.x, r2.top_left.y),
                            Coord(end_overlap_x + 1, r2.bottom_left.y),
                            Coord(r2.bottom_right.x, r2.bottom_left.y));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r.top_right.x > end_overlap_x) {
           Region left_over(Coord(end_overlap_x + 1, r.top_left.y),
                            Coord(r.top_right.x, r.top_left.y),
                            Coord(end_overlap_x + 1, r.bottom_left.y),
                            Coord(r.bottom_right.x, r.bottom_left.y));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
 
         if (r2.top_left.y < start_overlap_y) {
           Region left_over(r2.top_left, r2.top_right,
                            Coord(r2.bottom_left.x, start_overlap_y - 1),
                            Coord(r2.bottom_right.x, start_overlap_y - 1));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r.top_left.y < start_overlap_y) {
           Region left_over(r.top_left, r.top_right,
                            Coord(r.bottom_left.x, start_overlap_y - 1),
                            Coord(r.bottom_right.x, start_overlap_y - 1));
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r2.bottom_left.y > end_overlap_y) {
           Region left_over(Coord(r2.top_left.x, end_overlap_y + 1),
                            Coord(r2.top_right.x, end_overlap_y + 1),
                            r2.bottom_left, r2.bottom_right);
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         if (r.bottom_left.y > end_overlap_y) {
           Region left_over(Coord(r.top_left.x, end_overlap_y + 1),
                            Coord(r.top_right.x, end_overlap_y + 1),
                            r.bottom_left, r.bottom_right);
-            regions.push_back(left_over);
+          regions.push_back(left_over);
         }
         continue;
       }
@@ -728,10 +727,10 @@ int32_t main(int32_t argc, char *argv[]) {
     }
     ++idx;
   }
-  //for (const Region &r : regions) {
-  //  std::cout << r.top_left << " " << r.top_right << std::endl;
-  //  std::cout << r.bottom_left << " " << r.bottom_right << std::endl;
-  //}
+  // for (const Region &r : regions) {
+  //   std::cout << r.top_left << " " << r.top_right << std::endl;
+  //   std::cout << r.bottom_left << " " << r.bottom_right << std::endl;
+  // }
   int64_t part2 = std::accumulate(
       regions.begin(), regions.end(), int64_t{0},
       [](int64_t acc, const auto &r) { return acc + r.get_area(); });
