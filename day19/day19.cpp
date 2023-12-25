@@ -334,6 +334,10 @@ int32_t main(int32_t argc, char *argv[]) {
   std::vector<Rule> rules;
   std::vector<std::vector<Rule>> filters = dfs(workflows, "in", rules);
   int64_t part2 = 0;
+  std::vector<Range> xx_top;
+  std::vector<Range> mm_top;
+  std::vector<Range> aa_top;
+  std::vector<Range> ss_top;
   for (const auto &v : filters) {
     std::vector<Range> xx;
     std::vector<Range> mm;
@@ -743,33 +747,130 @@ int32_t main(int32_t argc, char *argv[]) {
       }
     }
     std::cout << std::endl;
-    std::cout << "X\n";
-    int64_t amt_x = xx.empty() ? 4000:0;
-    for (const Range &range : xx) {
-      std::cout << range << std::endl;
-      amt_x += range.length;
-    }
-    std::cout << "M\n";
-    int64_t amt_m = mm.empty() ? 4000:0;
-    for (const Range &range : mm) {
-      std::cout << range << std::endl;
-      amt_m += range.length;
-    }
-    std::cout << "A\n";
-    int64_t amt_a = aa.empty() ? 4000:0;
-    for (const Range &range : aa) {
-      std::cout << range << std::endl;
-      amt_a += range.length;
-    }
-    std::cout << "S\n";
-    int64_t amt_s = ss.empty() ? 4000:0;
-    for (const Range &range : ss) {
-      std::cout << range << std::endl;
-      amt_s += range.length;
-    }
-    std::cout << std::endl;
-    part2 += amt_x * amt_m * amt_a * amt_s;
+
+    xx_top.insert(xx_top.end(), xx.begin(), xx.end());
+    mm_top.insert(mm_top.end(), mm.begin(), mm.end());
+    aa_top.insert(aa_top.end(), aa.begin(), aa.end());
+    ss_top.insert(ss_top.end(), ss.begin(), ss.end());
   }
+  auto make_ranges_unique = [](std::vector<Range> &ranges) {
+    for (size_t idx = 0; idx < ranges.size();) {
+      bool removed = false;
+      for (size_t idx2 = idx + 1; idx2 < ranges.size();) {
+        const Range r = ranges[idx];
+        const Range r2 = ranges[idx2];
+        if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+          removed = true;
+          ranges.erase(ranges.begin() + idx2);
+          ranges.erase(ranges.begin() + idx);
+          int64_t start_overlap = std::max(r.start, r2.start);
+          int64_t end_overlap =
+              std::min(r.start + r.length - 1, r2.start + r2.length - 1);
+          ranges.push_back({start_overlap, end_overlap - start_overlap + 1});
+          if (r.start < start_overlap) {
+            ranges.push_back({r.start, start_overlap - r.start});
+          }
+          if (r.start + r.length - 1 > end_overlap) {
+            ranges.push_back(
+                {end_overlap + 1, r.start + r.length - (end_overlap + 1)});
+          }
+          if (r2.start < start_overlap) {
+            ranges.push_back({r2.start, start_overlap - r2.start});
+          }
+          if (r2.start + r2.length - 1 > end_overlap) {
+            ranges.push_back(
+                {end_overlap + 1, r2.start + r2.length - (end_overlap + 1)});
+          }
+          continue;
+        }
+        ++idx2;
+      }
+      if (removed) {
+        continue;
+      }
+      ++idx;
+    }
+  };
+  make_ranges_unique(xx_top);
+  make_ranges_unique(mm_top);
+  make_ranges_unique(aa_top);
+  make_ranges_unique(ss_top);
+  for (size_t idx = 0; idx < xx_top.size(); ++idx) {
+    const Range &r = xx_top[idx];
+    for (size_t idx2 = idx + 1; idx2 < xx_top.size(); ++idx2) {
+      const Range &r2 = xx_top[idx2];
+      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+        throw;
+      }
+    }
+  }
+  for (size_t idx = 0; idx < mm_top.size(); ++idx) {
+    const Range &r = mm_top[idx];
+    for (size_t idx2 = idx + 1; idx2 < mm_top.size(); ++idx2) {
+      const Range &r2 = mm_top[idx2];
+      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+        throw;
+      }
+    }
+  }
+  for (size_t idx = 0; idx < aa_top.size(); ++idx) {
+    const Range &r = aa_top[idx];
+    for (size_t idx2 = idx + 1; idx2 < aa_top.size(); ++idx2) {
+      const Range &r2 = aa_top[idx2];
+      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+        throw;
+      }
+    }
+  }
+  for (size_t idx = 0; idx < ss_top.size(); ++idx) {
+    const Range &r = ss_top[idx];
+    for (size_t idx2 = idx + 1; idx2 < ss_top.size(); ++idx2) {
+      const Range &r2 = ss_top[idx2];
+      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+        throw;
+      }
+    }
+  }
+  auto assert_every_range_leq_4000 = [](const std::vector<Range> &ranges) {
+    for (const auto &r : ranges) {
+      assert(r.start + r.length - 1 <= 4000);
+    }
+  };
+  assert_every_range_leq_4000(xx_top);
+  assert_every_range_leq_4000(mm_top);
+  assert_every_range_leq_4000(aa_top);
+  assert_every_range_leq_4000(ss_top);
+  auto accumulate_ranges = [](const std::vector<Range> &ranges) {
+    return std::accumulate(
+        ranges.begin(), ranges.end(), int64_t{0},
+        [](int64_t acc, const Range &r) { return acc + r.length; });
+  };
+  int64_t x_total = accumulate_ranges(xx_top);
+  int64_t m_total = accumulate_ranges(mm_top);
+  int64_t a_total = accumulate_ranges(aa_top);
+  int64_t s_total = accumulate_ranges(ss_top);
+  std::cout << std::endl;
+  std::cout << "XX\n";
+  for (const Range &r : xx_top) {
+    std::cout << r << std::endl;
+  }
+  std::cout << "MM\n";
+  for (const Range &r : mm_top) {
+    std::cout << r << std::endl;
+  }
+  std::cout << "AA\n";
+  for (const Range &r : aa_top) {
+    std::cout << r << std::endl;
+  }
+  std::cout << "SS\n";
+  for (const Range &r : ss_top) {
+    std::cout << r << std::endl;
+  }
+  assert(x_total <= 4000);
+  assert(m_total <= 4000);
+  assert(a_total <= 4000);
+  assert(s_total <= 4000);
+  part2 += x_total * m_total * a_total * s_total;
   std::cout << std::format("PART2: {}\n", part2);
   return 0;
 }
