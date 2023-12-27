@@ -258,17 +258,6 @@ struct xmas {
 void dfs(const std::map<std::string, WorkFlow> workflows,
          const std::string &workflow, Range x, Range m, Range a, Range s,
          std::vector<xmas> &grouped_together) {
-  //std::cout << workflow << std::endl;
-  //std::cout << "X\n";
-  //std::cout << x << std::endl;
-  //std::cout << "M\n";
-  //std::cout << m << std::endl;
-  //std::cout << "A\n";
-  //std::cout << a << std::endl;
-  //std::cout << "S\n";
-  //std::cout << s << std::endl;
-  //std::cout << std::endl;
-
   if (workflow == "A") {
     grouped_together.push_back({{x}, {m}, {a}, {s}});
     return;
@@ -454,105 +443,6 @@ int32_t main(int32_t argc, char *argv[]) {
 
                         srngs.start < rs.start + rs.length &&
                         rs.start < srngs.start + srngs.length) {
-
-                      int64_t xstart_overlap = std::max(xrngs.start, rx.start);
-                      int64_t xend_overlap =
-                          std::min(xrngs.start + xrngs.length - 1,
-                                   rx.start + rx.length - 1);
-                      if (xrngs.start + xrngs.length - 1 > xstart_overlap &&
-                          xrngs.start < xstart_overlap &&
-                          xrngs.start + xrngs.length - 1 < xend_overlap) {
-                        xrngs.length = xstart_overlap - xrngs.start;
-                      }
-                      if (rx.start + rx.length - 1 > xstart_overlap &&
-                          rx.start < xstart_overlap &&
-                          rx.start + rx.length - 1 < xend_overlap) {
-                        xrngs.length =
-                            xrngs.start + xrngs.length - (xend_overlap + 1);
-                        xrngs.start = xend_overlap + 1;
-                      }
-                      int64_t mstart_overlap = std::max(mrngs.start, rm.start);
-                      int64_t mend_overlap =
-                          std::min(mrngs.start + mrngs.length - 1,
-                                   rm.start + rm.length - 1);
-                      if (mrngs.start + mrngs.length - 1 > mstart_overlap &&
-                          mrngs.start < mstart_overlap &&
-                          mrngs.start + mrngs.length - 1 < mend_overlap) {
-                        mrngs.length = mstart_overlap - mrngs.start;
-                      }
-                      if (rm.start + rm.length - 1 > mstart_overlap &&
-                          rm.start < mstart_overlap &&
-                          rm.start + rm.length - 1 < mend_overlap) {
-                        mrngs.length =
-                            mrngs.start + mrngs.length - (mend_overlap + 1);
-                        mrngs.start = mend_overlap + 1;
-                      }
-                      int64_t astart_overlap = std::max(arngs.start, ra.start);
-                      int64_t aend_overlap =
-                          std::min(arngs.start + arngs.length - 1,
-                                   ra.start + ra.length - 1);
-                      if (arngs.start + arngs.length - 1 > astart_overlap &&
-                          arngs.start < astart_overlap &&
-                          arngs.start + arngs.length - 1 < aend_overlap) {
-                        arngs.length = astart_overlap - arngs.start;
-                      }
-                      if (ra.start + ra.length - 1 > astart_overlap &&
-                          ra.start < astart_overlap &&
-                          ra.start + ra.length - 1 < aend_overlap) {
-                        arngs.length =
-                            arngs.start + arngs.length - (aend_overlap + 1);
-                        arngs.start = aend_overlap + 1;
-                      }
-
-                      int64_t sstart_overlap = std::max(srngs.start, rs.start);
-                      int64_t send_overlap =
-                          std::min(srngs.start + srngs.length - 1,
-                                   rs.start + rs.length - 1);
-                      if (srngs.start + srngs.length - 1 > sstart_overlap &&
-                          srngs.start < sstart_overlap &&
-                          srngs.start + srngs.length - 1 < send_overlap) {
-                        srngs.length = sstart_overlap - srngs.start;
-                      }
-                      if (rs.start + rs.length - 1 > sstart_overlap &&
-                          rs.start < sstart_overlap &&
-                          rs.start + rs.length - 1 < send_overlap) {
-                        srngs.length =
-                            srngs.start + srngs.length - (send_overlap + 1);
-                        srngs.start = send_overlap + 1;
-                      }
-                      if (xrngs.start == xstart_overlap &&
-                          xrngs.start + xrngs.length - 1 == xend_overlap &&
-                          mrngs.start == mstart_overlap &&
-                          mrngs.start + mrngs.length - 1 == mend_overlap &&
-                          arngs.start == astart_overlap &&
-                          arngs.start + arngs.length - 1 == aend_overlap &&
-                          srngs.start == sstart_overlap &&
-                          srngs.start + srngs.length - 1 == send_overlap) {
-                        group.x.erase(group.x.begin() + idx_x);
-                        group.m.erase(group.m.begin() + idx_m);
-                        group.a.erase(group.a.begin() + idx_a);
-                        group.s.erase(group.s.begin() + idx_s);
-                      } else if (rx.start == xstart_overlap &&
-                                 rx.start + rx.length - 1 == xend_overlap &&
-                                 rm.start == mstart_overlap &&
-                                 rm.start + rx.length - 1 == mend_overlap &&
-                                 ra.start == astart_overlap &&
-                                 ra.start + ra.length - 1 == aend_overlap &&
-                                 rs.start == sstart_overlap &&
-                                 rs.start + rs.length - 1 == send_overlap) {
-                        group2.x.erase(group2.x.begin() + idx_x2);
-                        group2.m.erase(group2.m.begin() + idx_m2);
-                        group2.a.erase(group2.a.begin() + idx_a2);
-                        group2.s.erase(group2.s.begin() + idx_s2);
-                      }
-                      std::cout << "X RANGE: " << rx << " " << xrngs
-                                << std::endl;
-                      std::cout << "M RANGE: " << rm << " " << mrngs
-                                << std::endl;
-                      std::cout << "A RANGE: " << ra << " " << arngs
-                                << std::endl;
-                      std::cout << "S RANGE: " << rs << " " << srngs
-                                << std::endl;
                       return true;
                     }
                   }
