@@ -148,6 +148,42 @@ struct Rule {
     just_workflow = jwf;
     workflow = wf;
   }
+  Range apply(Range r, bool flip = false) const {
+    if (just_workflow) {
+      throw;
+    }
+    switch (c) {
+    case Compare::Lesser: {
+      if (!flip) {
+        if (value < r.start + r.length && value >= r.start) {
+          r.length = value - r.start;
+          return r;
+        }
+      } else {
+        if (value < r.start + r.length && value >= r.start) {
+          r.length = r.start + r.length - value;
+          r.start = value;
+          return r;
+        }
+      }
+    } break;
+    case Compare::Greater: {
+      if (!flip) {
+        if (value < r.start + r.length && value >= r.start) {
+          r.length = r.start + r.length - (value + 1);
+          r.start = value + 1;
+          return r;
+        }
+      } else {
+        if (value < r.start + r.length && value >= r.start) {
+          r.length = value - r.start + 1;
+          return r;
+        }
+      }
+    } break;
+    }
+    return r;
+  }
 };
 struct Part {
   int64_t x, m, a, s;
@@ -213,26 +249,79 @@ struct WorkFlow {
     return "R";
   }
 };
-std::vector<std::vector<Rule>>
-dfs(const std::map<std::string, WorkFlow> &workflows,
-    const std::string &workflow, std::vector<Rule> &rules) {
+struct xmas {
+  std::vector<Range> x;
+  std::vector<Range> m;
+  std::vector<Range> a;
+  std::vector<Range> s;
+};
+void dfs(const std::map<std::string, WorkFlow> workflows,
+         const std::string &workflow, Range x, Range m, Range a, Range s,
+         std::vector<xmas> &grouped_together) {
+  //std::cout << workflow << std::endl;
+  //std::cout << "X\n";
+  //std::cout << x << std::endl;
+  //std::cout << "M\n";
+  //std::cout << m << std::endl;
+  //std::cout << "A\n";
+  //std::cout << a << std::endl;
+  //std::cout << "S\n";
+  //std::cout << s << std::endl;
+  //std::cout << std::endl;
+
   if (workflow == "A") {
-    return std::vector<std::vector<Rule>>{rules};
+    grouped_together.push_back({{x}, {m}, {a}, {s}});
+    return;
   }
   if (workflow == "R") {
-    return std::vector<std::vector<Rule>>{};
+    return;
   }
-  std::vector<std::vector<Rule>> paths;
   const WorkFlow &wf = workflows.at(workflow);
   for (const Rule &r : wf.rules) {
-    rules.push_back(r);
-    auto extended = dfs(workflows, r.workflow, rules);
-    if (extended.size() > 0) {
-      paths.insert(paths.end(), extended.begin(), extended.end());
+    if (r.just_workflow) {
+      dfs(workflows, r.workflow, x, m, a, s, grouped_together);
+    } else {
+      Range old_x = x;
+      Range old_m = m;
+      Range old_a = a;
+      Range old_s = s;
+      // applying the rule
+      switch (r.category) {
+      case 'x': {
+        x = r.apply(x);
+      } break;
+      case 'm': {
+        m = r.apply(m);
+      } break;
+      case 'a': {
+        a = r.apply(a);
+      } break;
+      case 's': {
+        s = r.apply(s);
+      } break;
+      }
+      dfs(workflows, r.workflow, x, m, a, s, grouped_together);
+      // flipping the rule because now the inverse applies
+      x = old_x;
+      m = old_m;
+      a = old_a;
+      s = old_s;
+      switch (r.category) {
+      case 'x': {
+        x = r.apply(x, true);
+      } break;
+      case 'm': {
+        m = r.apply(m, true);
+      } break;
+      case 'a': {
+        a = r.apply(a, true);
+      } break;
+      case 's': {
+        s = r.apply(s, true);
+      } break;
+      }
     }
-    rules.pop_back();
   }
-  return paths;
 }
 std::ostream &operator<<(std::ostream &os, const Rule &r) {
   if (r.just_workflow) {
@@ -331,546 +420,180 @@ int32_t main(int32_t argc, char *argv[]) {
   }
   std::cout << std::format("PART1: {}\n", part1);
 
-  std::vector<Rule> rules;
-  std::vector<std::vector<Rule>> filters = dfs(workflows, "in", rules);
-  int64_t part2 = 0;
-  std::vector<Range> xx_top;
-  std::vector<Range> mm_top;
-  std::vector<Range> aa_top;
-  std::vector<Range> ss_top;
-  for (const auto &v : filters) {
-    std::vector<Range> xx;
-    std::vector<Range> mm;
-    std::vector<Range> aa;
-    std::vector<Range> ss;
-    for (const Rule &rules_up_until : workflows["in"].rules) {
-      if (rules_up_until.workflow == v[0].workflow) {
-        break;
-      }
-      // all rules up until a certain rule shall change the range of a
-      // category by making it the opposite of what the rule's condition is.
-      // so greater than will be less than bc the range didn't qualify.
-      switch (rules_up_until.category) {
-      case 'x':
-        switch (rules_up_until.c) {
-        case Compare::Greater: {
-          auto find = std::find_if(
-              xx.begin(), xx.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == xx.end()) {
-            xx.push_back(Range(1, rules_up_until.value));
-          } else {
-            find->length = rules_up_until.value - find->start;
-          }
-        } break;
-        case Compare::Lesser: {
-          auto find = std::find_if(
-              xx.begin(), xx.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == xx.end()) {
-            xx.push_back(
-                Range(rules_up_until.value, 4000 - (rules_up_until.value) + 1));
-          } else {
-            find->length =
-                find->start + find->length - (rules_up_until.value + 1);
-            find->start = rules_up_until.value + 1;
-          }
-        } break;
-        }
-        break;
-      case 'm':
-        switch (rules_up_until.c) {
-        case Compare::Greater: {
-          auto find = std::find_if(
-              mm.begin(), mm.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == mm.end()) {
-            mm.push_back(Range(1, rules_up_until.value));
-          } else {
-            find->length = rules_up_until.value - find->start;
-          }
-        } break;
-        case Compare::Lesser: {
-          auto find = std::find_if(
-              mm.begin(), mm.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == mm.end()) {
-            mm.push_back(
-                Range(rules_up_until.value, 4000 - (rules_up_until.value) + 1));
-          } else {
-            find->length =
-                find->start + find->length - (rules_up_until.value + 1);
-            find->start = rules_up_until.value + 1;
-          }
-        } break;
-        }
-        break;
-      case 'a':
-        switch (rules_up_until.c) {
-        case Compare::Greater: {
-          auto find = std::find_if(
-              aa.begin(), aa.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == aa.end()) {
-            aa.push_back(Range(1, rules_up_until.value));
-          } else {
-            find->length = rules_up_until.value - find->start;
-          }
-        } break;
-        case Compare::Lesser: {
-          auto find = std::find_if(
-              aa.begin(), aa.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == aa.end()) {
-            aa.push_back(
-                Range(rules_up_until.value, 4000 - (rules_up_until.value) + 1));
-          } else {
-            find->length =
-                find->start + find->length - (rules_up_until.value + 1);
-            find->start = rules_up_until.value + 1;
-          }
-        } break;
-        }
-        break;
-      case 's':
-        switch (rules_up_until.c) {
-        case Compare::Greater: {
-          auto find = std::find_if(
-              ss.begin(), ss.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == ss.end()) {
-            ss.push_back(Range(1, rules_up_until.value));
-          } else {
-            find->length = rules_up_until.value - find->start;
-          }
-        } break;
-        case Compare::Lesser: {
-          auto find = std::find_if(
-              ss.begin(), ss.end(), [&rules_up_until](const Range &xr) {
-                return rules_up_until.value >= xr.start &&
-                       rules_up_until.value < xr.start + xr.length;
-              });
-          if (find == ss.end()) {
-            ss.push_back(
-                Range(rules_up_until.value, 4000 - (rules_up_until.value) + 1));
-          } else {
-            find->length =
-                find->start + find->length - (rules_up_until.value + 1);
-            find->start = rules_up_until.value + 1;
-          }
-        } break;
-        }
-        break;
-      }
-    }
-    for (size_t idx = 0; idx < v.size(); ++idx) {
-      const Rule &current_rule = v[idx];
-      std::cout << current_rule << std::endl;
-      if (!current_rule.just_workflow) {
-        switch (current_rule.category) {
-        case 'x':
-          switch (current_rule.c) {
-          case Compare::Greater: {
-            auto find = std::find_if(
-                xx.begin(), xx.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == xx.end()) {
-              xx.push_back(Range(current_rule.value + 1,
-                                 4000 - (current_rule.value + 1) + 1));
-            } else {
-              find->length =
-                  find->start + find->length - (current_rule.value + 1);
-              find->start = current_rule.value + 1;
-            }
-          } break;
-          case Compare::Lesser: {
-            auto find = std::find_if(
-                xx.begin(), xx.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == xx.end()) {
-              xx.push_back(Range(1, current_rule.value - 1));
-            } else {
-              find->length = current_rule.value - find->start;
-            }
-          } break;
-          }
-          break;
-        case 'm':
-          switch (current_rule.c) {
-          case Compare::Greater: {
-            auto find = std::find_if(
-                mm.begin(), mm.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == mm.end()) {
-              mm.push_back(Range(current_rule.value + 1,
-                                 4000 - (current_rule.value + 1) + 1));
-            } else {
-              find->length =
-                  find->start + find->length - (current_rule.value + 1);
-              find->start = current_rule.value + 1;
-            }
-          } break;
-          case Compare::Lesser: {
-            auto find = std::find_if(
-                mm.begin(), mm.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == mm.end()) {
-              mm.push_back(Range(1, current_rule.value - 1));
-            } else {
-              find->length = current_rule.value - find->start;
-            }
-          } break;
-          }
-          break;
-        case 'a':
-          switch (current_rule.c) {
-          case Compare::Greater: {
-            auto find = std::find_if(
-                aa.begin(), aa.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == aa.end()) {
-              aa.push_back(Range(current_rule.value + 1,
-                                 4000 - (current_rule.value + 1) + 1));
-            } else {
-              find->length =
-                  find->start + find->length - (current_rule.value + 1);
-              find->start = current_rule.value + 1;
-            }
-          } break;
-          case Compare::Lesser: {
-            auto find = std::find_if(
-                aa.begin(), aa.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == aa.end()) {
-              aa.push_back(Range(1, current_rule.value - 1));
-            } else {
-              find->length = current_rule.value - find->start;
-            }
-          } break;
-          }
-          break;
-        case 's':
-          switch (current_rule.c) {
-          case Compare::Greater: {
-            auto find = std::find_if(
-                ss.begin(), ss.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == ss.end()) {
-              ss.push_back(Range(current_rule.value + 1,
-                                 4000 - (current_rule.value + 1) + 1));
-            } else {
-              find->length =
-                  find->start + find->length - (current_rule.value + 1);
-              find->start = current_rule.value + 1;
-            }
-          } break;
-          case Compare::Lesser: {
-            auto find = std::find_if(
-                ss.begin(), ss.end(), [&current_rule](const Range &xr) {
-                  return current_rule.value >= xr.start &&
-                         current_rule.value < xr.start + xr.length;
-                });
-            if (find == ss.end()) {
-              ss.push_back(Range(1, current_rule.value - 1));
-            } else {
-              find->length = current_rule.value - find->start;
-            }
-          } break;
-          }
-          break;
-        }
-      }
-      if (idx + 1 < v.size()) {
-        for (const Rule &rules_up_until :
-             workflows[current_rule.workflow].rules) {
-          if (rules_up_until.workflow == v[idx + 1].workflow) {
-            break;
-          }
-          // all rules up until a certain rule shall change the range of a
-          // category by making it the opposite of what the rule's condition is.
-          // so greater than will be less than bc the range didn't qualify.
-          switch (rules_up_until.category) {
-          case 'x':
-            switch (rules_up_until.c) {
-            case Compare::Greater: {
-              auto find = std::find_if(
-                  xx.begin(), xx.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == xx.end()) {
-                xx.push_back(Range(1, rules_up_until.value));
-              } else {
-                find->length = rules_up_until.value - find->start;
-              }
-            } break;
-            case Compare::Lesser: {
-              auto find = std::find_if(
-                  xx.begin(), xx.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == xx.end()) {
-                xx.push_back(Range(rules_up_until.value,
-                                   4000 - (rules_up_until.value) + 1));
-              } else {
-                find->length =
-                    find->start + find->length - (rules_up_until.value + 1);
-                find->start = rules_up_until.value + 1;
-              }
-            } break;
-            }
-            break;
-          case 'm':
-            switch (rules_up_until.c) {
-            case Compare::Greater: {
-              auto find = std::find_if(
-                  mm.begin(), mm.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == mm.end()) {
-                mm.push_back(Range(1, rules_up_until.value));
-              } else {
-                find->length = rules_up_until.value - find->start;
-              }
-            } break;
-            case Compare::Lesser: {
-              auto find = std::find_if(
-                  mm.begin(), mm.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == mm.end()) {
-                mm.push_back(Range(rules_up_until.value,
-                                   4000 - (rules_up_until.value) + 1));
-              } else {
-                find->length =
-                    find->start + find->length - (rules_up_until.value + 1);
-                find->start = rules_up_until.value + 1;
-              }
-            } break;
-            }
-            break;
-          case 'a':
-            switch (rules_up_until.c) {
-            case Compare::Greater: {
-              auto find = std::find_if(
-                  aa.begin(), aa.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == aa.end()) {
-                aa.push_back(Range(1, rules_up_until.value));
-              } else {
-                find->length = rules_up_until.value - find->start;
-              }
-            } break;
-            case Compare::Lesser: {
-              auto find = std::find_if(
-                  aa.begin(), aa.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == aa.end()) {
-                aa.push_back(Range(rules_up_until.value,
-                                   4000 - (rules_up_until.value) + 1));
-              } else {
-                find->length =
-                    find->start + find->length - (rules_up_until.value + 1);
-                find->start = rules_up_until.value + 1;
-              }
-            } break;
-            }
-            break;
-          case 's':
-            switch (rules_up_until.c) {
-            case Compare::Greater: {
-              auto find = std::find_if(
-                  ss.begin(), ss.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == ss.end()) {
-                ss.push_back(Range(1, rules_up_until.value));
-              } else {
-                find->length = rules_up_until.value - find->start;
-              }
-            } break;
-            case Compare::Lesser: {
-              auto find = std::find_if(
-                  ss.begin(), ss.end(), [&rules_up_until](const Range &xr) {
-                    return rules_up_until.value >= xr.start &&
-                           rules_up_until.value < xr.start + xr.length;
-                  });
-              if (find == ss.end()) {
-                ss.push_back(Range(rules_up_until.value,
-                                   4000 - (rules_up_until.value) + 1));
-              } else {
-                find->length =
-                    find->start + find->length - (rules_up_until.value + 1);
-                find->start = rules_up_until.value + 1;
-              }
-            } break;
-            }
-            break;
-          }
-        }
-      }
-    }
-    std::cout << std::endl;
+  std::vector<xmas> grouped_together;
+  dfs(workflows, "in", Range(1, 4000), Range(1, 4000), Range(1, 4000),
+      Range(1, 4000), grouped_together);
 
-    xx_top.insert(xx_top.end(), xx.begin(), xx.end());
-    mm_top.insert(mm_top.end(), mm.begin(), mm.end());
-    aa_top.insert(aa_top.end(), aa.begin(), aa.end());
-    ss_top.insert(ss_top.end(), ss.begin(), ss.end());
-  }
-  auto make_ranges_unique = [](std::vector<Range> &ranges) {
-    for (size_t idx = 0; idx < ranges.size();) {
-      bool removed = false;
-      for (size_t idx2 = idx + 1; idx2 < ranges.size();) {
-        const Range r = ranges[idx];
-        const Range r2 = ranges[idx2];
-        if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
-          removed = true;
-          ranges.erase(ranges.begin() + idx2);
-          ranges.erase(ranges.begin() + idx);
-          int64_t start_overlap = std::max(r.start, r2.start);
-          int64_t end_overlap =
-              std::min(r.start + r.length - 1, r2.start + r2.length - 1);
-          ranges.push_back({start_overlap, end_overlap - start_overlap + 1});
-          if (r.start < start_overlap) {
-            ranges.push_back({r.start, start_overlap - r.start});
+  auto check_for_overlaps = [](xmas &group, xmas &group2) -> bool {
+    for (size_t idx_x = 0; idx_x < group.x.size(); ++idx_x) {
+      for (size_t idx_m = 0; idx_m < group.m.size(); ++idx_m) {
+        for (size_t idx_a = 0; idx_a < group.a.size(); ++idx_a) {
+          for (size_t idx_s = 0; idx_s < group.s.size(); ++idx_s) {
+            Range &xrngs = group.x[idx_x];
+            Range &mrngs = group.m[idx_m];
+            Range &arngs = group.a[idx_a];
+            Range &srngs = group.s[idx_s];
+            for (size_t idx_x2 = 0; idx_x2 < group2.x.size(); ++idx_x2) {
+              for (size_t idx_m2 = 0; idx_m2 < group2.m.size(); ++idx_m2) {
+                for (size_t idx_a2 = 0; idx_a2 < group2.a.size(); ++idx_a2) {
+                  for (size_t idx_s2 = 0; idx_s2 < group2.s.size(); ++idx_s2) {
+
+                    const Range rx = group2.x[idx_x2];
+                    const Range rm = group2.m[idx_m2];
+                    const Range ra = group2.a[idx_a2];
+                    const Range rs = group2.s[idx_s2];
+
+                    if (xrngs.start < rx.start + rx.length &&
+                        rx.start < xrngs.start + xrngs.length &&
+
+                        mrngs.start < rm.start + rm.length &&
+                        rm.start < mrngs.start + mrngs.length &&
+
+                        arngs.start < ra.start + ra.length &&
+                        ra.start < arngs.start + arngs.length &&
+
+                        srngs.start < rs.start + rs.length &&
+                        rs.start < srngs.start + srngs.length) {
+
+                      int64_t xstart_overlap = std::max(xrngs.start, rx.start);
+                      int64_t xend_overlap =
+                          std::min(xrngs.start + xrngs.length - 1,
+                                   rx.start + rx.length - 1);
+                      if (xrngs.start + xrngs.length - 1 > xstart_overlap &&
+                          xrngs.start < xstart_overlap &&
+                          xrngs.start + xrngs.length - 1 < xend_overlap) {
+                        xrngs.length = xstart_overlap - xrngs.start;
+                      }
+                      if (rx.start + rx.length - 1 > xstart_overlap &&
+                          rx.start < xstart_overlap &&
+                          rx.start + rx.length - 1 < xend_overlap) {
+                        xrngs.length =
+                            xrngs.start + xrngs.length - (xend_overlap + 1);
+                        xrngs.start = xend_overlap + 1;
+                      }
+                      int64_t mstart_overlap = std::max(mrngs.start, rm.start);
+                      int64_t mend_overlap =
+                          std::min(mrngs.start + mrngs.length - 1,
+                                   rm.start + rm.length - 1);
+                      if (mrngs.start + mrngs.length - 1 > mstart_overlap &&
+                          mrngs.start < mstart_overlap &&
+                          mrngs.start + mrngs.length - 1 < mend_overlap) {
+                        mrngs.length = mstart_overlap - mrngs.start;
+                      }
+                      if (rm.start + rm.length - 1 > mstart_overlap &&
+                          rm.start < mstart_overlap &&
+                          rm.start + rm.length - 1 < mend_overlap) {
+                        mrngs.length =
+                            mrngs.start + mrngs.length - (mend_overlap + 1);
+                        mrngs.start = mend_overlap + 1;
+                      }
+                      int64_t astart_overlap = std::max(arngs.start, ra.start);
+                      int64_t aend_overlap =
+                          std::min(arngs.start + arngs.length - 1,
+                                   ra.start + ra.length - 1);
+                      if (arngs.start + arngs.length - 1 > astart_overlap &&
+                          arngs.start < astart_overlap &&
+                          arngs.start + arngs.length - 1 < aend_overlap) {
+                        arngs.length = astart_overlap - arngs.start;
+                      }
+                      if (ra.start + ra.length - 1 > astart_overlap &&
+                          ra.start < astart_overlap &&
+                          ra.start + ra.length - 1 < aend_overlap) {
+                        arngs.length =
+                            arngs.start + arngs.length - (aend_overlap + 1);
+                        arngs.start = aend_overlap + 1;
+                      }
+
+                      int64_t sstart_overlap = std::max(srngs.start, rs.start);
+                      int64_t send_overlap =
+                          std::min(srngs.start + srngs.length - 1,
+                                   rs.start + rs.length - 1);
+                      if (srngs.start + srngs.length - 1 > sstart_overlap &&
+                          srngs.start < sstart_overlap &&
+                          srngs.start + srngs.length - 1 < send_overlap) {
+                        srngs.length = sstart_overlap - srngs.start;
+                      }
+                      if (rs.start + rs.length - 1 > sstart_overlap &&
+                          rs.start < sstart_overlap &&
+                          rs.start + rs.length - 1 < send_overlap) {
+                        srngs.length =
+                            srngs.start + srngs.length - (send_overlap + 1);
+                        srngs.start = send_overlap + 1;
+                      }
+                      if (xrngs.start == xstart_overlap &&
+                          xrngs.start + xrngs.length - 1 == xend_overlap &&
+                          mrngs.start == mstart_overlap &&
+                          mrngs.start + mrngs.length - 1 == mend_overlap &&
+                          arngs.start == astart_overlap &&
+                          arngs.start + arngs.length - 1 == aend_overlap &&
+                          srngs.start == sstart_overlap &&
+                          srngs.start + srngs.length - 1 == send_overlap) {
+                        group.x.erase(group.x.begin() + idx_x);
+                        group.m.erase(group.m.begin() + idx_m);
+                        group.a.erase(group.a.begin() + idx_a);
+                        group.s.erase(group.s.begin() + idx_s);
+                      } else if (rx.start == xstart_overlap &&
+                                 rx.start + rx.length - 1 == xend_overlap &&
+                                 rm.start == mstart_overlap &&
+                                 rm.start + rx.length - 1 == mend_overlap &&
+                                 ra.start == astart_overlap &&
+                                 ra.start + ra.length - 1 == aend_overlap &&
+                                 rs.start == sstart_overlap &&
+                                 rs.start + rs.length - 1 == send_overlap) {
+                        group2.x.erase(group2.x.begin() + idx_x2);
+                        group2.m.erase(group2.m.begin() + idx_m2);
+                        group2.a.erase(group2.a.begin() + idx_a2);
+                        group2.s.erase(group2.s.begin() + idx_s2);
+                      }
+                      std::cout << "X RANGE: " << rx << " " << xrngs
+                                << std::endl;
+                      std::cout << "M RANGE: " << rm << " " << mrngs
+                                << std::endl;
+                      std::cout << "A RANGE: " << ra << " " << arngs
+                                << std::endl;
+                      std::cout << "S RANGE: " << rs << " " << srngs
+                                << std::endl;
+                      return true;
+                    }
+                  }
+                }
+              }
+            }
           }
-          if (r.start + r.length - 1 > end_overlap) {
-            ranges.push_back(
-                {end_overlap + 1, r.start + r.length - (end_overlap + 1)});
-          }
-          if (r2.start < start_overlap) {
-            ranges.push_back({r2.start, start_overlap - r2.start});
-          }
-          if (r2.start + r2.length - 1 > end_overlap) {
-            ranges.push_back(
-                {end_overlap + 1, r2.start + r2.length - (end_overlap + 1)});
-          }
-          continue;
         }
-        ++idx2;
       }
-      if (removed) {
-        continue;
-      }
-      ++idx;
     }
+    return false;
   };
-  make_ranges_unique(xx_top);
-  make_ranges_unique(mm_top);
-  make_ranges_unique(aa_top);
-  make_ranges_unique(ss_top);
-  for (size_t idx = 0; idx < xx_top.size(); ++idx) {
-    const Range &r = xx_top[idx];
-    for (size_t idx2 = idx + 1; idx2 < xx_top.size(); ++idx2) {
-      const Range &r2 = xx_top[idx2];
-      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
+  for (size_t idx_xmas = 0; idx_xmas < grouped_together.size(); ++idx_xmas) {
+    xmas &group = grouped_together[idx_xmas];
+    for (size_t idx_xmas2 = idx_xmas + 1; idx_xmas2 < grouped_together.size();
+         ++idx_xmas2) {
+      xmas &group2 = grouped_together[idx_xmas2];
+      // std::cerr << idx_xmas << " " << idx_xmas2 << std::endl;
+      if (check_for_overlaps(group, group2)) {
         throw;
       }
     }
   }
-  for (size_t idx = 0; idx < mm_top.size(); ++idx) {
-    const Range &r = mm_top[idx];
-    for (size_t idx2 = idx + 1; idx2 < mm_top.size(); ++idx2) {
-      const Range &r2 = mm_top[idx2];
-      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
-        throw;
-      }
-    }
-  }
-  for (size_t idx = 0; idx < aa_top.size(); ++idx) {
-    const Range &r = aa_top[idx];
-    for (size_t idx2 = idx + 1; idx2 < aa_top.size(); ++idx2) {
-      const Range &r2 = aa_top[idx2];
-      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
-        throw;
-      }
-    }
-  }
-  for (size_t idx = 0; idx < ss_top.size(); ++idx) {
-    const Range &r = ss_top[idx];
-    for (size_t idx2 = idx + 1; idx2 < ss_top.size(); ++idx2) {
-      const Range &r2 = ss_top[idx2];
-      if (r.start < r2.start + r2.length && r2.start < r.start + r.length) {
-        throw;
-      }
-    }
-  }
-  auto assert_every_range_leq_4000 = [](const std::vector<Range> &ranges) {
-    for (const auto &r : ranges) {
-      assert(r.start + r.length - 1 <= 4000);
-    }
-  };
-  assert_every_range_leq_4000(xx_top);
-  assert_every_range_leq_4000(mm_top);
-  assert_every_range_leq_4000(aa_top);
-  assert_every_range_leq_4000(ss_top);
-  auto accumulate_ranges = [](const std::vector<Range> &ranges) {
-    return std::accumulate(
-        ranges.begin(), ranges.end(), int64_t{0},
-        [](int64_t acc, const Range &r) { return acc + r.length; });
-  };
-  int64_t x_total = accumulate_ranges(xx_top);
-  int64_t m_total = accumulate_ranges(mm_top);
-  int64_t a_total = accumulate_ranges(aa_top);
-  int64_t s_total = accumulate_ranges(ss_top);
-  std::cout << std::endl;
-  std::cout << "XX\n";
-  for (const Range &r : xx_top) {
-    std::cout << r << std::endl;
-  }
-  std::cout << "MM\n";
-  for (const Range &r : mm_top) {
-    std::cout << r << std::endl;
-  }
-  std::cout << "AA\n";
-  for (const Range &r : aa_top) {
-    std::cout << r << std::endl;
-  }
-  std::cout << "SS\n";
-  for (const Range &r : ss_top) {
-    std::cout << r << std::endl;
-  }
-  assert(x_total <= 4000);
-  assert(m_total <= 4000);
-  assert(a_total <= 4000);
-  assert(s_total <= 4000);
-  part2 += x_total * m_total * a_total * s_total;
+
+  int64_t part2 = std::accumulate(
+      grouped_together.begin(), grouped_together.end(), int64_t{0},
+      [](int64_t acc, const xmas &group) {
+        int64_t xs = std::accumulate(
+            group.x.begin(), group.x.end(), int64_t{0},
+            [](int64_t acc, const Range &r) { return acc + r.length; });
+        int64_t ms = std::accumulate(
+            group.m.begin(), group.m.end(), int64_t{0},
+            [](int64_t acc, const Range &r) { return acc + r.length; });
+        int64_t as = std::accumulate(
+            group.a.begin(), group.a.end(), int64_t{0},
+            [](int64_t acc, const Range &r) { return acc + r.length; });
+        int64_t ss = std::accumulate(
+            group.s.begin(), group.s.end(), int64_t{0},
+            [](int64_t acc, const Range &r) { return acc + r.length; });
+        return acc + (xs * ms * as * ss);
+      });
   std::cout << std::format("PART2: {}\n", part2);
   return 0;
 }

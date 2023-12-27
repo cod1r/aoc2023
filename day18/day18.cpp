@@ -644,8 +644,8 @@ int32_t main(int32_t argc, char *argv[]) {
   // std::cout << std::endl;
   for (size_t idx = 0; idx < regions.size();) {
     bool removed = false;
+    const Region r = regions[idx];
     for (size_t idx2 = idx + 1; idx2 < regions.size();) {
-      const Region r = regions[idx];
       const Region r2 = regions[idx2];
       if (r.top_left.x <= r2.top_right.x && r2.top_left.x <= r.top_right.x &&
           r.top_left.y <= r2.bottom_left.y &&
@@ -718,7 +718,7 @@ int32_t main(int32_t argc, char *argv[]) {
                            r.bottom_left, r.bottom_right);
           regions.push_back(left_over);
         }
-        continue;
+        break;
       }
       ++idx2;
     }
