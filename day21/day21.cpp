@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
-#include <deque>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -102,43 +101,31 @@ bool operator==(const Coord &a, const Coord &b) {
 struct Range {
   int64_t start;
   int64_t length;
-};
-
-struct Node {
-  bool visited;
-  int64_t weight;
-  Coord coord;
-  int64_t lefts_in_a_row;
-  int64_t rights_in_a_row;
-  int64_t ups_in_a_row;
-  int64_t downs_in_a_row;
-  Node() = default;
-  Node(int64_t w, Coord c, int64_t l, int64_t r, int64_t u, int64_t d) {
-    weight = w;
-    coord = c;
-    lefts_in_a_row = l;
-    rights_in_a_row = r;
-    ups_in_a_row = u;
-    downs_in_a_row = d;
-    visited = false;
-  }
-  Node(const Node &n) { *this = n; }
-  Node &operator=(const Node &n) {
-    this->weight = n.weight;
-    this->coord = n.coord;
-    this->lefts_in_a_row = n.lefts_in_a_row;
-    this->rights_in_a_row = n.rights_in_a_row;
-    this->ups_in_a_row = n.ups_in_a_row;
-    this->downs_in_a_row = n.downs_in_a_row;
-    return *this;
+  Range() = default;
+  Range(int64_t s, int64_t l) {
+    start = s;
+    length = l;
   }
 };
-bool operator==(const Node &a, const Node &b) { return a.coord == b.coord; }
-
-int64_t get_heat_loss(const std::vector<std::string> &heat_map, int64_t row,
-                      int64_t col) {
-  return (heat_map[row][col] - '0');
+std::ostream &operator<<(std::ostream &os, const Range &r) {
+  os << std::format("start: {}, length: {}", r.start, r.length);
+  return os;
 }
+bool operator==(const Range &a, const Range &b) {
+  return a.start == b.start && a.length == b.length;
+}
+struct Region {
+  Coord top_left;
+  Coord top_right;
+  Coord bottom_left;
+  Coord bottom_right;
+  Region(Coord one, Coord two, Coord three, Coord four) {
+    top_left = one;
+    top_right = two;
+    bottom_left = three;
+    bottom_right = four;
+  }
+};
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
     std::cerr << "called the binary wrong\n";
@@ -151,10 +138,87 @@ int32_t main(int32_t argc, char *argv[]) {
   }
   const int64_t LINE_CAPACITY = 1 << 16;
   char line[LINE_CAPACITY];
-  std::vector<std::string> heat_map;
+  std::vector<std::string> map;
   while (input.getline(line, LINE_CAPACITY)) {
     int64_t line_length = input.gcount() - 1;
-    heat_map.push_back(std::string(line, line_length));
+    map.push_back(std::string(line, line_length));
+  }
+  input.close();
+
+  auto find_s_loc = [](const std::vector<std::string> &map) -> Coord {
+    Coord s;
+    for (size_t r = 0; r < map.size(); ++r) {
+      for (size_t c = 0; c < map[r].size(); ++c) {
+        if (map[r][c] == 'S') {
+          s = Coord(c, r);
+          return s;
+        }
+      }
+    }
+    return s;
+  };
+
+  Coord s = find_s_loc(map);
+
+  {
+    std::queue<Coord> q;
+    q.push(s);
+    for (size_t steps = 0; steps < 64; ++steps) {
+      size_t q_size = q.size();
+      while (q_size > 0) {
+        Coord t = q.front();
+        map[t.y][t.x] = '.';
+        q.pop();
+        if (t.x + 1 < (int64_t)map[0].length() && map[t.y][t.x + 1] == '.') {
+          q.push(Coord(t.x + 1, t.y));
+          map[t.y][t.x + 1] = 'O';
+        }
+        if (t.x > 0 && map[t.y][t.x - 1] == '.') {
+          q.push(Coord(t.x - 1, t.y));
+          map[t.y][t.x - 1] = 'O';
+        }
+        if (t.y + 1 < (int64_t)map.size() && map[t.y + 1][t.x] == '.') {
+          q.push(Coord(t.x, t.y + 1));
+          map[t.y + 1][t.x] = 'O';
+        }
+        if (t.y > 0 && map[t.y - 1][t.x] == '.') {
+          q.push(Coord(t.x, t.y - 1));
+          map[t.y - 1][t.x] = 'O';
+        }
+        --q_size;
+      }
+    }
+    std::cout << "PART1: " << q.size() << std::endl;
+  }
+  {
+    std::queue<Coord> q;
+    q.push(s);
+    for (size_t steps = 0; steps < 26501365; ++steps) {
+      size_t q_size = q.size();
+      while (q_size > 0) {
+        Coord t = q.front();
+        map[t.y][t.x] = '.';
+        q.pop();
+        int64_t x_mod = (t.x + 1) % (int64_t)map[0].length();
+        int64_t y_mod = (t.y + 1) % (int64_t)map.size();
+
+        int64_t x_mod_sub = 
+        if (map[t.y][x_mod] == '.') {
+          q.push(Coord(t.x + 1, t.y));
+        }
+        if (t.x > 0 && map[t.y][t.x - 1] == '.') {
+          q.push(Coord(t.x - 1, t.y));
+        }
+        if (map[y_mod][t.x] == '.') {
+          q.push(Coord(t.x, t.y + 1));
+        }
+        if (t.y > 0 && map[t.y - 1][t.x] == '.') {
+          q.push(Coord(t.x, t.y - 1));
+        }
+        --q_size;
+      }
+    }
+    std::cout << "PART2: " << q.size() << std::endl;
   }
   return 0;
 }
