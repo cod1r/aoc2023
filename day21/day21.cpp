@@ -145,6 +145,8 @@ int32_t main(int32_t argc, char *argv[]) {
   }
   input.close();
 
+  auto map2 = map;
+
   auto find_s_loc = [](const std::vector<std::string> &map) -> Coord {
     Coord s;
     for (size_t r = 0; r < map.size(); ++r) {
@@ -159,6 +161,8 @@ int32_t main(int32_t argc, char *argv[]) {
   };
 
   Coord s = find_s_loc(map);
+  map[s.y][s.x] = '.';
+  map2[s.y][s.x] = '.';
 
   {
     std::queue<Coord> q;
@@ -193,27 +197,140 @@ int32_t main(int32_t argc, char *argv[]) {
   {
     std::queue<Coord> q;
     q.push(s);
-    for (size_t steps = 0; steps < 26501365; ++steps) {
+    std::set<std::pair<int64_t, int64_t>> in_q;
+    in_q.insert({s.x, s.y});
+    int64_t garden_plots_per_level[26'501'365] = {0};
+    garden_plots_per_level[0] = 1;
+    for (size_t steps = 0; steps < /*26'501'365*/ 500; ++steps) {
       size_t q_size = q.size();
+      std::cout << q_size << " " << steps << std::endl;
       while (q_size > 0) {
         Coord t = q.front();
-        map[t.y][t.x] = '.';
         q.pop();
-        int64_t x_mod = (t.x + 1) % (int64_t)map[0].length();
-        int64_t y_mod = (t.y + 1) % (int64_t)map.size();
+        in_q.erase({t.x, t.y});
+        if (t.y == s.y) {
+          if (t.x <= s.x) {
+            int64_t x_rem = (t.x - 1) % (int64_t)map2[0].length();
+            int64_t x_mod =
+                ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
 
-        int64_t x_mod_sub = 
-        if (map[t.y][x_mod] == '.') {
-          q.push(Coord(t.x + 1, t.y));
+            int64_t y_rem = t.y % (int64_t)map2.size();
+            int64_t y_mod =
+                ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+            assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+            assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+            if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x - 1, t.y})) {
+              q.push(Coord(t.x - 1, t.y));
+              in_q.insert({t.x - 1, t.y});
+            }
+          }
+          if (t.x >= s.x) {
+            int64_t x_rem = (t.x + 1) % (int64_t)map2[0].length();
+            int64_t x_mod =
+                ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+            int64_t y_rem = t.y % (int64_t)map2.size();
+            int64_t y_mod =
+                ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+            assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+            assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+            if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x + 1, t.y})) {
+              q.push(Coord(t.x + 1, t.y));
+              in_q.insert({t.x + 1, t.y});
+            }
+          }
         }
-        if (t.x > 0 && map[t.y][t.x - 1] == '.') {
-          q.push(Coord(t.x - 1, t.y));
+        if (t.y <= s.y) {
+          int64_t x_rem = t.x % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = (t.y - 1) % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y - 1})) {
+            q.push(Coord(t.x, t.y - 1));
+            in_q.insert({t.x, t.y - 1});
+          }
         }
-        if (map[y_mod][t.x] == '.') {
-          q.push(Coord(t.x, t.y + 1));
+        if (t.y >= s.y) {
+          int64_t x_rem = t.x % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = (t.y + 1) % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y + 1})) {
+            q.push(Coord(t.x, t.y + 1));
+            in_q.insert({t.x, t.y + 1});
+          }
         }
-        if (t.y > 0 && map[t.y - 1][t.x] == '.') {
-          q.push(Coord(t.x, t.y - 1));
+        {
+          int64_t x_rem = (t.x + 1) % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = t.y % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x + 1, t.y})) {
+            q.push(Coord(t.x + 1, t.y));
+            in_q.insert({t.x + 1, t.y});
+          }
+        }
+        {
+          int64_t x_rem = (t.x - 1) % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = t.y % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x - 1, t.y})) {
+            q.push(Coord(t.x - 1, t.y));
+            in_q.insert({t.x - 1, t.y});
+          }
+        }
+        {
+          int64_t x_rem = t.x % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = (t.y + 1) % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y + 1})) {
+            q.push(Coord(t.x, t.y + 1));
+            in_q.insert({t.x, t.y + 1});
+          }
+        }
+        {
+          int64_t x_rem = t.x % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = (t.y - 1) % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y - 1})) {
+            q.push(Coord(t.x, t.y - 1));
+            in_q.insert({t.x, t.y - 1});
+          }
         }
         --q_size;
       }
@@ -222,3 +339,16 @@ int32_t main(int32_t argc, char *argv[]) {
   }
   return 0;
 }
+
+//     4
+/*    434
+     43#34
+    43#3#34
+   43#3#3#34
+  43#3#3#3#34
+   43#3#3#34
+    43#3#34
+     43#34
+      434
+       4
+ */
