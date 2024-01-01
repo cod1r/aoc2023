@@ -199,50 +199,18 @@ int32_t main(int32_t argc, char *argv[]) {
     q.push(s);
     std::set<std::pair<int64_t, int64_t>> in_q;
     in_q.insert({s.x, s.y});
-    int64_t garden_plots_per_level[26'501'365] = {0};
-    garden_plots_per_level[0] = 1;
-    for (size_t steps = 0; steps < /*26'501'365*/ 500; ++steps) {
+    const size_t STEP_LIMIT = 1244 + 131 - 131 - 131;
+    int64_t current_quad = 4;
+    int64_t prev_d = 0;
+    const int64_t ACTUAL_LIMIT = 26'501'365;
+    std::vector<int64_t> stupid_step(ACTUAL_LIMIT, 0);
+    std::vector<int64_t> stupid_diff(ACTUAL_LIMIT, 0);
+    for (size_t steps = 0; steps < STEP_LIMIT; ++steps) {
       size_t q_size = q.size();
-      std::cout << q_size << " " << steps << std::endl;
       while (q_size > 0) {
         Coord t = q.front();
         q.pop();
-        in_q.erase({t.x, t.y});
-        if (t.y == s.y) {
-          if (t.x <= s.x) {
-            int64_t x_rem = (t.x - 1) % (int64_t)map2[0].length();
-            int64_t x_mod =
-                ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
-
-            int64_t y_rem = t.y % (int64_t)map2.size();
-            int64_t y_mod =
-                ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
-            assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
-            assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
-
-            if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x - 1, t.y})) {
-              q.push(Coord(t.x - 1, t.y));
-              in_q.insert({t.x - 1, t.y});
-            }
-          }
-          if (t.x >= s.x) {
-            int64_t x_rem = (t.x + 1) % (int64_t)map2[0].length();
-            int64_t x_mod =
-                ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
-
-            int64_t y_rem = t.y % (int64_t)map2.size();
-            int64_t y_mod =
-                ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
-            assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
-            assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
-
-            if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x + 1, t.y})) {
-              q.push(Coord(t.x + 1, t.y));
-              in_q.insert({t.x + 1, t.y});
-            }
-          }
-        }
-        if (t.y <= s.y) {
+        {
           int64_t x_rem = t.x % (int64_t)map2[0].length();
           int64_t x_mod =
               ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
@@ -255,36 +223,6 @@ int32_t main(int32_t argc, char *argv[]) {
           if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y - 1})) {
             q.push(Coord(t.x, t.y - 1));
             in_q.insert({t.x, t.y - 1});
-          }
-        }
-        if (t.y >= s.y) {
-          int64_t x_rem = t.x % (int64_t)map2[0].length();
-          int64_t x_mod =
-              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
-
-          int64_t y_rem = (t.y + 1) % (int64_t)map2.size();
-          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
-          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
-          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
-
-          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y + 1})) {
-            q.push(Coord(t.x, t.y + 1));
-            in_q.insert({t.x, t.y + 1});
-          }
-        }
-        {
-          int64_t x_rem = (t.x + 1) % (int64_t)map2[0].length();
-          int64_t x_mod =
-              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
-
-          int64_t y_rem = t.y % (int64_t)map2.size();
-          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
-          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
-          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
-
-          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x + 1, t.y})) {
-            q.push(Coord(t.x + 1, t.y));
-            in_q.insert({t.x + 1, t.y});
           }
         }
         {
@@ -303,6 +241,21 @@ int32_t main(int32_t argc, char *argv[]) {
           }
         }
         {
+          int64_t x_rem = (t.x + 1) % (int64_t)map2[0].length();
+          int64_t x_mod =
+              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
+
+          int64_t y_rem = t.y % (int64_t)map2.size();
+          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
+          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
+          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
+
+          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x + 1, t.y})) {
+            q.push(Coord(t.x + 1, t.y));
+            in_q.insert({t.x + 1, t.y});
+          }
+        }
+        {
           int64_t x_rem = t.x % (int64_t)map2[0].length();
           int64_t x_mod =
               ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
@@ -317,25 +270,62 @@ int32_t main(int32_t argc, char *argv[]) {
             in_q.insert({t.x, t.y + 1});
           }
         }
-        {
-          int64_t x_rem = t.x % (int64_t)map2[0].length();
-          int64_t x_mod =
-              ((int64_t)map2[0].length() + x_rem) % (int64_t)map2[0].length();
-
-          int64_t y_rem = (t.y - 1) % (int64_t)map2.size();
-          int64_t y_mod = ((int64_t)map2.size() + y_rem) % (int64_t)map2.size();
-          assert(x_mod >= 0 && x_mod < (int64_t)map2[0].length());
-          assert(y_mod >= 0 && y_mod < (int64_t)map2.size());
-
-          if (map2[y_mod][x_mod] == '.' && !in_q.contains({t.x, t.y - 1})) {
-            q.push(Coord(t.x, t.y - 1));
-            in_q.insert({t.x, t.y - 1});
-          }
-        }
         --q_size;
       }
+      std::cout << steps << " " << q.size() << " " << current_quad << " "
+                << (int64_t)q.size() - current_quad << " "
+                << (int64_t)q.size() - current_quad - prev_d << std::endl;
+      stupid_step[steps] = q.size();
+      stupid_diff[steps] = (int64_t)q.size() - current_quad;
+      prev_d = (int64_t)q.size() - current_quad;
+      current_quad += 4;
     }
-    std::cout << "PART2: " << q.size() << std::endl;
+    int64_t start = 0;
+    int64_t end = 0;
+    for (int64_t idx = 0; idx < 1000; ++idx) {
+      if (stupid_step[idx] == (idx + 1) * 4 &&
+          stupid_step[idx + 1] == (idx + 2) * 4) {
+        if (start == 0) {
+          start = idx;
+          ++idx;
+        } else {
+          end = idx;
+          break;
+        }
+      }
+    }
+    std::cout << start << " " << end << std::endl;
+    int64_t start2 = end;
+    int64_t end2 = end + 131;
+    std::cout << start2 << " " << end2 << std::endl;
+    std::vector<int64_t> diffs_offset(131, 0);
+    for (int64_t idx = start2; idx < end2; ++idx) {
+      diffs_offset[idx - start2] =
+          stupid_diff[idx] - stupid_diff[start + (idx - start2)];
+      // std::cout << stupid_step[idx] << " "
+      //           << stupid_step[start + (idx - start2)] << " "
+      //           << stupid_diff[idx] << " "
+      //           << stupid_diff[start + (idx - start2)] << std::endl;
+    }
+    assert(stupid_step.size() == ACTUAL_LIMIT);
+    int64_t diffs_idx = 0;
+    for (int64_t idx = STEP_LIMIT; idx < (int64_t)stupid_step.size(); ++idx) {
+      stupid_diff[idx] = stupid_diff[idx - 131] + diffs_offset[diffs_idx];
+      stupid_step[idx] = (idx + 1) * 4 + stupid_diff[idx];
+      ++diffs_idx;
+      if (diffs_idx == 131) {
+        diffs_idx = 0;
+      }
+      //std::cout << idx << " " << stupid_step[idx] << " " << (idx + 1) * 4 << " "
+      //          << stupid_diff[idx] << std::endl;
+    }
+    stupid_step.insert(stupid_step.begin(), 1);
+    int64_t sum = 0;
+    for (int64_t idx = stupid_step.size() - 1; idx >= 0; idx -= 2) {
+      sum += stupid_step[idx];
+      assert(sum >= 0);
+    }
+    std::cout << "PART2: " << sum << std::endl;
   }
   return 0;
 }
