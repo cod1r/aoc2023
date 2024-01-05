@@ -316,8 +316,9 @@ int32_t main(int32_t argc, char *argv[]) {
       if (diffs_idx == 131) {
         diffs_idx = 0;
       }
-      //std::cout << idx << " " << stupid_step[idx] << " " << (idx + 1) * 4 << " "
-      //          << stupid_diff[idx] << std::endl;
+      // std::cout << idx << " " << stupid_step[idx] << " " << (idx + 1) * 4 <<
+      // " "
+      //           << stupid_diff[idx] << std::endl;
     }
     stupid_step.insert(stupid_step.begin(), 1);
     int64_t sum = 0;
