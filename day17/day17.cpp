@@ -92,6 +92,9 @@ struct Coord {
     this->x = x;
     this->y = y;
   }
+  explicit operator std::pair<int64_t, int64_t>() const {
+    return std::pair<int64_t, int64_t>{x, y};
+  }
 };
 std::ostream &operator<<(std::ostream &os, const Coord &c) {
   os << std::format("x: {}, y: {}", c.x, c.y);
@@ -105,43 +108,94 @@ struct Range {
   int64_t length;
 };
 
+enum class Dir {
+  L,
+  R,
+  U,
+  D,
+};
 struct Node {
-  bool visited;
   int64_t weight;
   Coord coord;
-  std::set<std::pair<int64_t, int64_t>> prev;
-  int64_t lefts_in_a_row;
-  int64_t rights_in_a_row;
-  int64_t ups_in_a_row;
-  int64_t downs_in_a_row;
+  Dir facing;
+  int64_t num_steps;
   Node() = default;
-  Node(int64_t w, Coord c, int64_t l, int64_t r, int64_t u, int64_t d) {
+  Node(int64_t w, Coord c, Dir facing, int ns) {
     weight = w;
     coord = c;
-    lefts_in_a_row = l;
-    rights_in_a_row = r;
-    ups_in_a_row = u;
-    downs_in_a_row = d;
-    visited = false;
+    this->facing = facing;
+    num_steps = ns;
   }
   Node(const Node &n) { *this = n; }
   Node &operator=(const Node &n) {
     this->weight = n.weight;
     this->coord = n.coord;
-    this->lefts_in_a_row = n.lefts_in_a_row;
-    this->rights_in_a_row = n.rights_in_a_row;
-    this->ups_in_a_row = n.ups_in_a_row;
-    this->downs_in_a_row = n.downs_in_a_row;
-    this->prev = n.prev;
+    this->facing = n.facing;
+    this->num_steps = n.num_steps;
     return *this;
+  }
+  void rotate_cw_and_step() {
+    switch (facing) {
+    case Dir::U:
+      facing = Dir::R;
+      coord.x += 1;
+      break;
+    case Dir::D:
+      facing = Dir::L;
+      coord.x -= 1;
+      break;
+    case Dir::L:
+      facing = Dir::U;
+      coord.y -= 1;
+      break;
+    case Dir::R:
+      facing = Dir::D;
+      coord.y += 1;
+      break;
+    }
+    num_steps = 1;
+  }
+  void rotate_ccw_and_step() {
+    switch (facing) {
+    case Dir::U:
+      facing = Dir::L;
+      coord.x -= 1;
+      break;
+    case Dir::D:
+      facing = Dir::R;
+      coord.x += 1;
+      break;
+    case Dir::L:
+      facing = Dir::D;
+      coord.y += 1;
+      break;
+    case Dir::R:
+      facing = Dir::U;
+      coord.y -= 1;
+      break;
+    }
+    num_steps = 1;
+  }
+  void forward_and_step() {
+    switch (facing) {
+    case Dir::L:
+      coord.x -= 1;
+      break;
+    case Dir::R:
+      coord.x += 1;
+      break;
+    case Dir::U:
+      coord.y -= 1;
+      break;
+    case Dir::D:
+      coord.y += 1;
+      break;
+    }
+    num_steps += 1;
   }
 };
 bool operator==(const Node &a, const Node &b) { return a.coord == b.coord; }
 
-int64_t get_heat_loss(const std::vector<std::string> &heat_map, int64_t row,
-                      int64_t col) {
-  return (heat_map[row][col] - '0');
-}
 int32_t main(int32_t argc, char *argv[]) {
   if (argc != 2) {
     std::cerr << "called the binary wrong\n";
@@ -159,85 +213,55 @@ int32_t main(int32_t argc, char *argv[]) {
     int64_t line_length = input.gcount() - 1;
     heat_map.push_back(std::string(line, line_length));
   }
-  auto cmp = [](const Node &a, const Node &b) { return a.weight > b.weight; };
-  std::priority_queue<Node, std::deque<Node>, decltype(cmp)> pq;
-  Node start(0, Coord(0, 0), 0, 0, 0, 0);
-  pq.push(start);
-  std::vector<std::vector<int64_t>> heat_losses(
-      heat_map.size(), std::vector<int64_t>(heat_map[0].length(), 1'000'000));
-  while (pq.size() > 0) {
-    Node current_node = pq.top();
-    heat_losses[current_node.coord.y][current_node.coord.x] =
-        current_node.weight;
-        std::cout << current_node.coord << std::endl;
-    pq.pop();
-    if (current_node.coord ==
-        Coord(heat_map[0].length() - 1, heat_map.size() - 1)) {
-      std::cout << current_node.weight << std::endl;
-      break;
-    }
-    if (current_node.coord.x + 1 < (int64_t)heat_map[0].length() &&
-        current_node.rights_in_a_row + 1 <= 3 &&
-        !current_node.prev.contains(
-            {current_node.coord.x + 1, current_node.coord.y})) {
-      int64_t heat_loss = get_heat_loss(heat_map, current_node.coord.y,
-                                        current_node.coord.x + 1);
-      Node new_node(current_node.weight + heat_loss,
-                    Coord(current_node.coord.x + 1, current_node.coord.y), 0,
-                    current_node.rights_in_a_row + 1, 0, 0);
-      new_node.prev = current_node.prev;
-      new_node.prev.insert({current_node.coord.x, current_node.coord.y});
-      if (new_node.weight <=
-          heat_losses[new_node.coord.y][new_node.coord.x]) {
-        pq.push(new_node);
+  // I had the right idea to use dijkstra's but failed to see how I could optimize it
+  // by just using one outer set and hashing something that would make it unique for certain paths
+  // I also didn't see that this solution would be fast enough
+  // credit to xavdid ( I took their solution in python and converted it to c++; the problem was that i didn't use a good enough hashing method to make things fast when I tried dijkstra's )
+  auto calc = [&heat_map](int64_t min_steps, int64_t max_steps) -> int64_t {
+    auto cmp = [](const Node &a, const Node &b) { return a.weight > b.weight; };
+    std::priority_queue<Node, std::deque<Node>, decltype(cmp)> pq(cmp);
+    pq.push(Node(0, {0, 0}, Dir::R, 0));
+    pq.push(Node(0, {0, 0}, Dir::D, 0));
+    std::set<std::tuple<int64_t, int64_t, Dir, int64_t>> seen;
+    while (pq.size() > 0) {
+      Node n = pq.top();
+      pq.pop();
+      if (n.coord == Coord(heat_map[0].length() - 1, heat_map.size() - 1) && n.num_steps >= min_steps) {
+        return n.weight;
+      }
+      if (seen.contains({n.coord.x, n.coord.y, n.facing, n.num_steps})) {
+        continue;
+      }
+      seen.insert({n.coord.x, n.coord.y, n.facing, n.num_steps});
+
+      Node cwn = n;
+      cwn.rotate_cw_and_step();
+      Node ccwn = n;
+      ccwn.rotate_ccw_and_step();
+      assert(cwn.num_steps == 1 && ccwn.num_steps == 1);
+      Node fn = n;
+      fn.forward_and_step();
+
+      if (ccwn.coord.x >= 0 && ccwn.coord.x < (int64_t)heat_map[0].length() &&
+          ccwn.coord.y >= 0 && ccwn.coord.y < (int64_t)heat_map.size() && n.num_steps >= min_steps) {
+        ccwn.weight = n.weight + (heat_map[ccwn.coord.y][ccwn.coord.x] - '0');
+        pq.push(ccwn);
+      }
+      if (cwn.coord.x >= 0 && cwn.coord.x < (int64_t)heat_map[0].length() &&
+          cwn.coord.y >= 0 && cwn.coord.y < (int64_t)heat_map.size() && n.num_steps >= min_steps) {
+        cwn.weight = n.weight + (heat_map[cwn.coord.y][cwn.coord.x] - '0');
+        pq.push(cwn);
+      }
+      if (fn.coord.x >= 0 && fn.coord.x < (int64_t)heat_map[0].length() &&
+          fn.coord.y >= 0 && fn.coord.y < (int64_t)heat_map.size() &&
+          fn.num_steps <= max_steps) {
+        fn.weight = n.weight + (heat_map[fn.coord.y][fn.coord.x] - '0');
+        pq.push(fn);
       }
     }
-    if (current_node.coord.x > 0 && current_node.lefts_in_a_row + 1 <= 3 &&
-        !current_node.prev.contains(
-            {current_node.coord.x - 1, current_node.coord.y})) {
-      int64_t heat_loss = get_heat_loss(heat_map, current_node.coord.y,
-                                        current_node.coord.x - 1);
-      Node new_node(current_node.weight + heat_loss,
-                    Coord(current_node.coord.x - 1, current_node.coord.y),
-                    current_node.lefts_in_a_row + 1, 0, 0, 0);
-      new_node.prev = current_node.prev;
-      new_node.prev.insert({current_node.coord.x, current_node.coord.y});
-      if (new_node.weight <=
-          heat_losses[new_node.coord.y][new_node.coord.x]) {
-        pq.push(new_node);
-      }
-    }
-    if (current_node.coord.y + 1 < (int64_t)heat_map.size() &&
-        current_node.downs_in_a_row + 1 <= 3 &&
-        !current_node.prev.contains(
-            {current_node.coord.x, current_node.coord.y + 1})) {
-      int64_t heat_loss = get_heat_loss(heat_map, current_node.coord.y + 1,
-                                        current_node.coord.x);
-      Node new_node(current_node.weight + heat_loss,
-                    Coord(current_node.coord.x, current_node.coord.y + 1), 0, 0,
-                    0, current_node.downs_in_a_row + 1);
-      new_node.prev = current_node.prev;
-      new_node.prev.insert({current_node.coord.x, current_node.coord.y});
-      if (new_node.weight <=
-          heat_losses[new_node.coord.y][new_node.coord.x]) {
-        pq.push(new_node);
-      }
-    }
-    if (current_node.coord.y > 0 && current_node.ups_in_a_row + 1 <= 3 &&
-        !current_node.prev.contains(
-            {current_node.coord.x, current_node.coord.y - 1})) {
-      int64_t heat_loss = get_heat_loss(heat_map, current_node.coord.y - 1,
-                                        current_node.coord.x);
-      Node new_node(current_node.weight + heat_loss,
-                    Coord(current_node.coord.x, current_node.coord.y - 1), 0, 0,
-                    current_node.ups_in_a_row + 1, 0);
-      new_node.prev = current_node.prev;
-      new_node.prev.insert({current_node.coord.x, current_node.coord.y});
-      if (new_node.weight <=
-          heat_losses[new_node.coord.y][new_node.coord.x]) {
-        pq.push(new_node);
-      }
-    }
-  }
+    return -1;
+  };
+  std::cout << "PART1: " << calc(0, 3) << std::endl;
+  std::cout << "PART2: " << calc(4, 10) << std::endl;
   return 0;
 }
