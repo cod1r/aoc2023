@@ -242,15 +242,15 @@ int32_t main(int32_t argc, char *argv[]) {
       Node fn = n;
       fn.forward_and_step();
 
-      if (ccwn.coord.x >= 0 && ccwn.coord.x < (int64_t)heat_map[0].length() &&
-          ccwn.coord.y >= 0 && ccwn.coord.y < (int64_t)heat_map.size() && n.num_steps >= min_steps) {
-        ccwn.weight = n.weight + (heat_map[ccwn.coord.y][ccwn.coord.x] - '0');
-        pq.push(ccwn);
-      }
       if (cwn.coord.x >= 0 && cwn.coord.x < (int64_t)heat_map[0].length() &&
           cwn.coord.y >= 0 && cwn.coord.y < (int64_t)heat_map.size() && n.num_steps >= min_steps) {
         cwn.weight = n.weight + (heat_map[cwn.coord.y][cwn.coord.x] - '0');
         pq.push(cwn);
+      }
+      if (ccwn.coord.x >= 0 && ccwn.coord.x < (int64_t)heat_map[0].length() &&
+          ccwn.coord.y >= 0 && ccwn.coord.y < (int64_t)heat_map.size() && n.num_steps >= min_steps) {
+        ccwn.weight = n.weight + (heat_map[ccwn.coord.y][ccwn.coord.x] - '0');
+        pq.push(ccwn);
       }
       if (fn.coord.x >= 0 && fn.coord.x < (int64_t)heat_map[0].length() &&
           fn.coord.y >= 0 && fn.coord.y < (int64_t)heat_map.size() &&

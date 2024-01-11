@@ -241,10 +241,10 @@ struct Conjunction : public Module {
     high_sent = 0;
   }
   void send() {
-    bool all_is_high = std::accumulate(
-        memory.begin(), memory.end(), true,
-        [](bool acc, const auto &p) { return acc && p.second == Pulse::High; });
-    if (all_is_high) {
+    auto one_is_low = std::find_if(
+        memory.begin(), memory.end(),
+        [](const auto &p) { return p.second == Pulse::Low; });
+    if (one_is_low == memory.end()) {
       send_low();
       low_sent += outputs.size();
     } else {
@@ -271,9 +271,7 @@ struct Conjunction : public Module {
   ~Conjunction() = default;
 };
 struct Broadcaster : public Module {
-  void reset() {
-    low_sent = 0;
-  }
+  void reset() { low_sent = 0; }
   void send() {
     send_low();
     low_sent += outputs.size();
@@ -287,8 +285,7 @@ struct Broadcaster : public Module {
   ~Broadcaster() = default;
 };
 struct UntypedModule : public Module {
-  void reset() {
-  }
+  void reset() {}
   void send() {}
   void receive(Pulse p) {
     if (p == Pulse::Low)
@@ -373,6 +370,18 @@ int32_t main(int32_t argc, char *argv[]) {
       if (output_find == modules.end()) {
         (*module_find)->outputs.push_back(new UntypedModule(std::string(msv)));
       } else {
+        // auto circular_fd = std::find_if((*output_find)->outputs.begin(),
+        //                              (*output_find)->outputs.end(),
+        //                              [module_find](const Module *m) {
+        //                                return m->name ==
+        //                                (*module_find)->name;
+        //                              });
+        // auto circular_fd2 = std::find_if((*module_find)->inputs.begin(),
+        //                               (*module_find)->inputs.end(),
+        //                               [output_find](const Module *m) {
+        //                                 return m->name ==
+        //                                 (*output_find)->name;
+        //                               });
         (*module_find)->outputs.push_back(*output_find);
         (*output_find)->inputs.push_back(*module_find);
       }
@@ -388,6 +397,18 @@ int32_t main(int32_t argc, char *argv[]) {
                    [](const Module *m) { return m->name == "broadcaster"; });
   std::queue<Module *> sends;
   const size_t PUSH_LIMIT = 1'000;
+  auto fd = std::find_if(cs.begin(), cs.end(), [](const Conjunction *m) {
+    return m->name == "zh";
+  });
+  assert(fd != cs.end());
+  for (const Module *m : (*fd)->inputs) {
+    std::cout << m->name << " ";
+    if (m->mt == ModuleType::FlipFlop) {
+      std::cout << "FlipFlop" << std::endl;
+    } else if (m->mt == ModuleType::Conjunction) {
+      std::cout << "Conjunction" << std::endl;
+    }
+  }
   for (size_t push = 0; push < PUSH_LIMIT; ++push) {
     sends.push(*broadcaster);
     while (!sends.empty()) {
@@ -421,13 +442,40 @@ int32_t main(int32_t argc, char *argv[]) {
   for (Module *m : modules) {
     m->reset();
   }
-
+  assert(sends.empty());
+  for (const Module *m : modules) {
+    if (m->name == "broadcaster") continue;
+    bool is_connected = false;
+    for (const Module *m2 : modules) {
+      if (m2 == m) continue;
+      auto fd = std::find_if(m2->outputs.begin(), m2->outputs.end(),
+                   [m](const Module *mo) { return mo->name == m->name; });
+      is_connected = is_connected || (fd != m2->outputs.end());
+    }
+    assert(is_connected);
+  }
   size_t push_amt = 0;
   bool final_machine_on = false;
   while (!final_machine_on) {
     ++push_amt;
     sends.push(*broadcaster);
     while (!sends.empty()) {
+      //for (const Module *m : (*fd)->inputs) {
+      //  std::cout << m->name << " ";
+      //  if (m->mt == ModuleType::Conjunction) {
+      //    auto fd_c = std::find_if(cs.begin(), cs.end(), [m](const Conjunction *c) {
+      //      return c->name == m->name;
+      //    });
+      //    for (const auto& p : (*fd_c)->memory) {
+      //      std::cout << (p.second == Pulse::High ? "HIGH " : "LOW ");
+      //    }
+      //    std::cout << std::endl;
+      //  }
+      //}
+      //for (const auto& p : (*fd)->memory) {
+      //      std::cout << (p.second == Pulse::High ? "HIGH " : "LOW ");
+      //}
+      //std::cout << std::endl;
       Module *o = sends.front();
       sends.pop();
       o->send();
