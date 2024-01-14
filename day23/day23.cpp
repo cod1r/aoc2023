@@ -410,13 +410,6 @@ int32_t main(int32_t argc, char *argv[]) {
         {{hiking_trails.size() - 1, hiking_trails[0].length() - 2}},
         hiking_trails.size() - 1, hiking_trails[0].length() - 2, 0);
     dfs_until_intersection({0, 1}, {{0, 1}}, 0, 1, 0);
-    for (const auto &p : graph) {
-      std::cout << p.first << std::endl;
-      for (size_t idx = 0; idx < p.second.w.size(); ++idx) {
-        std::cout << p.second.neighbors[idx] << " " << p.second.w[idx]
-                  << std::endl;
-      }
-    }
     std::pair<int64_t, int64_t> starting;
     int64_t starting_w = 0;
     for (const auto &p : graph) {
